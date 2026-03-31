@@ -1,10 +1,7 @@
 import Link from 'next/link'
 import { store } from '../src/data/store'
-import { categories } from '../src/data/categories'
-import { products } from '../src/data/products'
+import { getProducts, getCategories } from '../src/lib/supabase/server'
 import ProductCard from '../src/components/ProductCard'
-
-const featuredProducts = products.filter((p) => p.featured)
 
 const uspItems = [
   {
@@ -29,7 +26,11 @@ const uspItems = [
   },
 ]
 
-export default function Home() {
+export default async function Home() {
+  const [allProducts, categories] = await Promise.all([getProducts(), getCategories()])
+  const featuredProducts = allProducts.filter((p) => p.featured)
+  const categoryMap = Object.fromEntries(categories.map((c) => [c.slug, c]))
+
   return (
     <>
       {/* Hero Section */}
@@ -182,7 +183,11 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {featuredProducts.map((product) => (
-              <ProductCard key={product.slug} product={product} />
+              <ProductCard
+                key={product.slug}
+                product={product}
+                category={categoryMap[product.category]}
+              />
             ))}
           </div>
         </div>

@@ -1,14 +1,13 @@
 import Link from 'next/link'
-import { type Product } from '../data/products'
-import { categories } from '../data/categories'
+import type { ProductRow, CategoryRow } from '../lib/supabase/server'
 import { store } from '../data/store'
 
 interface ProductCardProps {
-  product: Product
+  product: ProductRow
+  category?: CategoryRow
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
-  const category = categories.find((c) => c.slug === product.category)
+export default function ProductCard({ product, category }: ProductCardProps) {
   const hasImage = product.images.length > 0
 
   return (

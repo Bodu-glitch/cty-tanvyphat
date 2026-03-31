@@ -1,10 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-    allowedDevOrigins: [
-        "chitinoid-funiculate-dakota.ngrok-free.dev"
+  allowedDevOrigins: [
+    'chitinoid-funiculate-dakota.ngrok-free.dev',
+    'provenly-nonwavering-jerri.ngrok-free.dev',
+  ],
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '**.fbcdn.net' },
+      { protocol: 'https', hostname: '**.supabase.co' },
     ],
+  },
 };
 
 export default nextConfig;

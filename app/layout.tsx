@@ -11,7 +11,11 @@ const geistSans = Geist({
 })
 
 export const metadata: Metadata = {
-  title: 'CT Tân Vy Phát | Giấy In & VPP Giá Sỉ TPHCM',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://tanvyphat.com'),
+  title: {
+    default: 'CT Tân Vy Phát | Giấy In & VPP Giá Sỉ TPHCM',
+    template: '%s | CT Tân Vy Phát',
+  },
   description:
     'CT Tân Vy Phát – Chuyên phân phối giấy in A4, văn phòng phẩm, bìa Thái, nhựa ép giá sỉ tại Q.12 TPHCM. Hàng chính hãng, ship toàn quốc. Liên hệ: 090 360 87 68.',
   keywords: [
@@ -22,6 +26,8 @@ export const metadata: Metadata = {
     'nhựa ép',
     'Tân Vy Phát',
     'Q.12',
+    'giấy Double A',
+    'giấy Projecta',
   ],
   openGraph: {
     title: 'CT Tân Vy Phát | Giấy In & VPP Giá Sỉ TPHCM',
@@ -29,7 +35,9 @@ export const metadata: Metadata = {
       'Chuyên phân phối giấy in A4, văn phòng phẩm, bìa Thái, nhựa ép giá sỉ. Ship toàn quốc.',
     locale: 'vi_VN',
     type: 'website',
+    siteName: 'CT Tân Vy Phát',
   },
+  robots: { index: true, follow: true },
 }
 
 export default function RootLayout({
