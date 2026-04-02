@@ -24,6 +24,7 @@ export type CategoryRow = {
   name: string
   description: string
   icon: string
+  branch: 'van-phong-pham' | 'hang-thai-lan'
   created_at: string
   updated_at: string
 }
@@ -77,7 +78,8 @@ export async function getCategories(): Promise<CategoryRow[]> {
   const { data, error } = await getClient()
     .from('categories')
     .select('*')
-    .order('name')
+    .order('branch')
+    .order('id')
   if (error) throw new Error(`getCategories: ${error.message}`)
   return data ?? []
 }

@@ -5,30 +5,38 @@ import ProductFilter from '../../src/components/ProductFilter'
 import ProductSearch from '../../src/components/ProductSearch'
 
 export const metadata: Metadata = {
-  title: 'Sản Phẩm – Giấy In & VPP Giá Sỉ',
+  title: 'Sản Phẩm – Văn Phòng Phẩm & Hàng Tiêu Dùng Thái Lan',
   description:
-    'Xem toàn bộ sản phẩm: giấy in A4, bìa Thái, nhựa ép, văn phòng phẩm, tập vở – giá sỉ tốt nhất TPHCM. Hàng chính hãng, giao toàn quốc.',
+    'Giấy in A4, bìa Thái, nhựa ép, văn phòng phẩm và hàng tiêu dùng Thái Lan nhập khẩu chính ngạch – giá sỉ tốt nhất. Hàng sẵn kho, giao toàn quốc.',
 }
 
 type PageProps = {
-  searchParams: Promise<{ category?: string; search?: string }>
+  searchParams: Promise<{ category?: string; branch?: string; search?: string }>
 }
 
 export default async function SanPhamPage({ searchParams }: PageProps) {
-  const { category: categoryParam, search: searchParam } = await searchParams
+  const { category: categoryParam, branch: branchParam, search: searchParam } = await searchParams
 
   const selectedCategory = categoryParam ?? 'all'
+  const selectedBranch = branchParam ?? 'all'
   const searchText = searchParam ?? ''
 
   const [allProducts, categories] = await Promise.all([getProducts(), getCategories()])
 
+  // Tập hợp slug của các danh mục thuộc branch đang lọc
+  const branchCategorySlugs =
+    selectedBranch !== 'all'
+      ? new Set(categories.filter((c) => c.branch === selectedBranch).map((c) => c.slug))
+      : null
+
   const filtered = allProducts.filter((p) => {
+    const matchBranch = branchCategorySlugs === null || branchCategorySlugs.has(p.category)
     const matchCat = selectedCategory === 'all' || p.category === selectedCategory
     const matchSearch =
       searchText.trim() === '' ||
       p.name.toLowerCase().includes(searchText.toLowerCase()) ||
       p.description.toLowerCase().includes(searchText.toLowerCase())
-    return matchCat && matchSearch
+    return matchBranch && matchCat && matchSearch
   })
 
   const productCounts: Record<string, number> = Object.fromEntries(
@@ -40,14 +48,40 @@ export default async function SanPhamPage({ searchParams }: PageProps) {
   return (
     <div className="min-h-screen bg-[#f8fafc]">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-[#1a3a6b] to-[#1a56db] text-white py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl md:text-3xl font-bold mb-2">Sản phẩm</h1>
-          <p className="text-blue-200 text-sm">
-            Giấy in A4, văn phòng phẩm, bìa Thái, nhựa ép – giá sỉ tốt nhất
-          </p>
+      {selectedBranch === 'hang-thai-lan' ? (
+        <div className="bg-gradient-to-r from-[#b91c1c] to-[#dc2626] text-white py-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3 mb-1">
+              <span className="text-3xl">🇹🇭</span>
+              <h1 className="text-2xl md:text-3xl font-bold">Hàng Tiêu Dùng Thái Lan</h1>
+            </div>
+            <p className="text-red-200 text-sm">
+              Nước giặt, nước xả, vệ sinh nhà cửa, chăm sóc cá nhân – nhập khẩu chính ngạch
+            </p>
+          </div>
         </div>
-      </div>
+      ) : selectedBranch === 'van-phong-pham' ? (
+        <div className="bg-gradient-to-r from-[#1a3a6b] to-[#1a56db] text-white py-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3 mb-1">
+              <span className="text-3xl">📋</span>
+              <h1 className="text-2xl md:text-3xl font-bold">Văn Phòng Phẩm</h1>
+            </div>
+            <p className="text-blue-200 text-sm">
+              Giấy in A4, bìa Thái, nhựa ép, tập vở, văn phòng phẩm – giá sỉ tốt nhất
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-gradient-to-r from-[#1a3a6b] to-[#1a56db] text-white py-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">Sản phẩm</h1>
+            <p className="text-blue-200 text-sm">
+              Văn phòng phẩm & hàng tiêu dùng Thái Lan – giá sỉ tốt nhất, hàng sẵn kho
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
@@ -57,6 +91,7 @@ export default async function SanPhamPage({ searchParams }: PageProps) {
             productCounts={productCounts}
             totalCount={allProducts.length}
             selectedCategory={selectedCategory}
+            selectedBranch={selectedBranch}
             searchText={searchText}
           />
 
