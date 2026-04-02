@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { store } from '../src/data/store'
 import { getProducts, getCategories } from '../src/lib/supabase/server'
 import FeaturedCarousel from '../src/components/FeaturedCarousel'
+import ScrollReveal from '../src/components/ScrollReveal'
 
 const uspItems = [
   {
@@ -120,6 +121,7 @@ export default async function Home() {
       {/* About Mini */}
       <section className="py-12 bg-[#f8fafc]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal>
           <div className="max-w-3xl mx-auto text-center">
             <p className="text-xs font-semibold tracking-widest text-[#1a56db] uppercase mb-2">
               CTY TNHH MTV SX TM TÂN VY PHÁT
@@ -152,6 +154,7 @@ export default async function Home() {
               ))}
             </div>
           </div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -159,9 +162,9 @@ export default async function Home() {
       <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {uspItems.map((item) => (
+            {uspItems.map((item, i) => (
+              <ScrollReveal key={item.title} delay={i * 100}>
               <div
-                key={item.title}
                 className={`group bg-white rounded-2xl p-6 shadow-sm border border-gray-100 ${item.cardHover} hover:shadow-lg hover:-translate-y-1 transition-all duration-300 text-center cursor-default`}
               >
                 <div className={`bg-gray-100 ${item.iconHover} w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm transition-colors duration-300`}>
@@ -170,6 +173,7 @@ export default async function Home() {
                 <h3 className="font-bold text-[#1a3a6b] text-base mb-2">{item.title}</h3>
                 <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
               </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -179,13 +183,13 @@ export default async function Home() {
 
       {/* Nhánh 1: Văn Phòng Phẩm — ảnh trái, text phải */}
       {(() => {
-        const vpp = categories.filter((c) => c.branch === 'van-phong-pham')
+        const vpp = categories.filter((c) => c.branch_slug === 'van-phong-pham')
         return (
           <section className="py-16 bg-white overflow-hidden">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
                 {/* Ảnh */}
-                <div className="w-full lg:w-[45%] shrink-0">
+                <ScrollReveal className="w-full lg:w-[45%] shrink-0">
                   <div className="overflow-hidden rounded-2xl">
                     <img
                       src="/branch-van-phong-pham.jpg"
@@ -193,9 +197,9 @@ export default async function Home() {
                       className="w-full h-72 md:h-96 object-cover hover:scale-105 transition-transform duration-700"
                     />
                   </div>
-                </div>
+                </ScrollReveal>
                 {/* Nội dung */}
-                <div className="w-full lg:w-[55%]">
+                <ScrollReveal className="w-full lg:w-[55%]" delay={150}>
                   <p className="text-xs font-semibold tracking-[0.2em] text-gray-400 uppercase mb-4">
                     [ Dòng sản phẩm 01 ]
                   </p>
@@ -229,7 +233,7 @@ export default async function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
                   </Link>
-                </div>
+                </ScrollReveal>
               </div>
             </div>
           </section>
@@ -238,13 +242,13 @@ export default async function Home() {
 
       {/* Nhánh 2: Hàng Tiêu Dùng Thái Lan — text trái, ảnh phải */}
       {(() => {
-        const thai = categories.filter((c) => c.branch === 'hang-thai-lan')
+        const thai = categories.filter((c) => c.branch_slug === 'hang-thai-lan')
         return (
           <section className="py-16 bg-[#f8fafc] overflow-hidden">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col lg:flex-row-reverse items-center gap-10 lg:gap-16">
                 {/* Ảnh */}
-                <div className="w-full lg:w-[45%] shrink-0">
+                <ScrollReveal className="w-full lg:w-[45%] shrink-0">
                   <div className="overflow-hidden rounded-2xl">
                     <img
                       src="/branch-hang-thai-lan.jpg"
@@ -252,9 +256,9 @@ export default async function Home() {
                       className="w-full h-72 md:h-96 object-cover hover:scale-105 transition-transform duration-700"
                     />
                   </div>
-                </div>
+                </ScrollReveal>
                 {/* Nội dung */}
-                <div className="w-full lg:w-[55%]">
+                <ScrollReveal className="w-full lg:w-[55%]" delay={150}>
                   <p className="text-xs font-semibold tracking-[0.2em] text-gray-400 uppercase mb-4">
                     [ Dòng sản phẩm 02 ]
                   </p>
@@ -288,7 +292,7 @@ export default async function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
                   </Link>
-                </div>
+                </ScrollReveal>
               </div>
             </div>
           </section>
@@ -319,13 +323,16 @@ export default async function Home() {
               </svg>
             </Link>
           </div>
-          <FeaturedCarousel products={featuredProducts} categoryMap={categoryMap} />
+          <ScrollReveal>
+            <FeaturedCarousel products={featuredProducts} categoryMap={categoryMap} />
+          </ScrollReveal>
         </div>
       </section>
 
       {/* CTA Banner */}
       <section className="py-12 bg-gradient-to-r from-[#1a3a6b] to-[#1a56db] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <ScrollReveal>
           <h2 className="text-2xl md:text-3xl font-bold mb-2">
             Liên hệ ngay để được báo giá tốt nhất!
           </h2>
@@ -372,6 +379,7 @@ export default async function Home() {
               Zalo
             </a>
           </div>
+          </ScrollReveal>
         </div>
       </section>
     </>

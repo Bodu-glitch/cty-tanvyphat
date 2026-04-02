@@ -18,15 +18,37 @@ export type ProductRow = {
   updated_at: string
 }
 
+export type BranchRow = {
+  id: number
+  slug: string
+  name: string
+  icon: string
+}
+
 export type CategoryRow = {
   id: number
   slug: string
   name: string
   description: string
   icon: string
-  branch: 'van-phong-pham' | 'hang-thai-lan'
+  branch_id: number
+  branch_slug: string
   created_at: string
   updated_at: string
+}
+
+export type SortBy = 'name' | 'price'
+export type SortDir = 'asc' | 'desc'
+export type PerPage = 50 | 100 | 200
+
+export type ProductFilterParams = {
+  category?: string
+  branchSlug?: string
+  search?: string
+  sortBy?: SortBy
+  sortDir?: SortDir
+  page?: number
+  perPage?: PerPage
 }
 
 function getClient() {
@@ -61,6 +83,77 @@ export async function getProducts(): Promise<ProductRow[]> {
   return data ?? []
 }
 
+export async function getProductsFiltered(filter: ProductFilterParams = {}): Promise<{
+  data: ProductRow[]
+  count: number
+}> {
+  const {
+    category,
+    branchSlug,
+    search,
+    sortBy = 'name',
+    sortDir = 'asc',
+    page = 1,
+    perPage = 50,
+  } = filter
+
+  const client = getClient()
+
+  // Nếu lọc theo branch, lấy danh sách category slug thuộc branch đó trước
+  let branchCategorySlugs: string[] | null = null
+  if (branchSlug && branchSlug !== 'all') {
+    const { data: cats } = await client
+      .from('categories')
+      .select('slug, branches!inner(slug)')
+      .eq('branches.slug', branchSlug)
+    branchCategorySlugs = (cats ?? []).map((c: { slug: string }) => c.slug)
+  }
+
+  let query = client
+    .from('products')
+    .select('*', { count: 'exact' })
+
+  if (search && search.trim()) {
+    const term = search.trim()
+    query = query.or(`name.ilike.%${term}%,description.ilike.%${term}%`)
+  }
+
+  if (category && category !== 'all') {
+    query = query.eq('category', category)
+  } else if (branchCategorySlugs !== null) {
+    query = query.in('category', branchCategorySlugs)
+  }
+
+  if (sortBy === 'price') {
+    query = query
+      .order('price', { ascending: sortDir === 'asc', nullsFirst: false })
+      .order('name', { ascending: true })
+  } else {
+    query = query
+      .order('featured', { ascending: false })
+      .order('name', { ascending: sortDir === 'asc' })
+  }
+
+  const offset = (page - 1) * perPage
+  query = query.range(offset, offset + perPage - 1)
+
+  const { data, error, count } = await query
+  if (error) throw new Error(`getProductsFiltered: ${error.message}`)
+  return { data: data ?? [], count: count ?? 0 }
+}
+
+export async function getProductCounts(): Promise<Record<string, number>> {
+  const { data, error } = await getClient()
+    .from('products')
+    .select('category')
+  if (error) throw new Error(`getProductCounts: ${error.message}`)
+  const counts: Record<string, number> = {}
+  for (const row of data ?? []) {
+    counts[row.category] = (counts[row.category] ?? 0) + 1
+  }
+  return counts
+}
+
 export async function getProductBySlug(slug: string): Promise<ProductRow | null> {
   const { data, error } = await getClient()
     .from('products')
@@ -77,11 +170,21 @@ export async function getProductBySlug(slug: string): Promise<ProductRow | null>
 export async function getCategories(): Promise<CategoryRow[]> {
   const { data, error } = await getClient()
     .from('categories')
-    .select('*')
-    .order('branch')
+    .select('*, branches!inner(slug)')
+    .order('branch_id')
     .order('id')
   if (error) throw new Error(`getCategories: ${error.message}`)
-  return data ?? []
+  return (data ?? []).map((row: CategoryRow & { branches: { slug: string } }) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    description: row.description,
+    icon: row.icon,
+    branch_id: row.branch_id,
+    branch_slug: row.branches.slug,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }))
 }
 
 export async function getProductsByCategory(categorySlug: string): Promise<ProductRow[]> {

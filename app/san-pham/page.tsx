@@ -1,8 +1,16 @@
 import type { Metadata } from 'next'
-import { getProducts, getCategories } from '../../src/lib/supabase/server'
+import {
+  getProductsFiltered,
+  getProductCounts,
+  getCategories,
+  type SortBy,
+  type SortDir,
+  type PerPage,
+} from '../../src/lib/supabase/server'
 import ProductCard from '../../src/components/ProductCard'
 import ProductFilter from '../../src/components/ProductFilter'
 import ProductSearch from '../../src/components/ProductSearch'
+import ProductPagination from '../../src/components/ProductPagination'
 
 export const metadata: Metadata = {
   title: 'Sản Phẩm – Văn Phòng Phẩm & Hàng Tiêu Dùng Thái Lan',
@@ -10,112 +18,160 @@ export const metadata: Metadata = {
     'Giấy in A4, bìa Thái, nhựa ép, văn phòng phẩm và hàng tiêu dùng Thái Lan nhập khẩu chính ngạch – giá sỉ tốt nhất. Hàng sẵn kho, giao toàn quốc.',
 }
 
+const VALID_PER_PAGE: PerPage[] = [50, 100, 200]
+
 type PageProps = {
-  searchParams: Promise<{ category?: string; branch?: string; search?: string }>
+  searchParams: Promise<{
+    category?: string
+    branch?: string
+    search?: string
+    sort?: string
+    dir?: string
+    per_page?: string
+    page?: string
+  }>
 }
 
 export default async function SanPhamPage({ searchParams }: PageProps) {
-  const { category: categoryParam, branch: branchParam, search: searchParam } = await searchParams
+  const {
+    category: categoryParam,
+    branch: branchParam,
+    search: searchParam,
+    sort: sortParam,
+    dir: dirParam,
+    per_page: perPageParam,
+    page: pageParam,
+  } = await searchParams
 
   const selectedCategory = categoryParam ?? 'all'
   const selectedBranch = branchParam ?? 'all'
   const searchText = searchParam ?? ''
+  const sortBy: SortBy = sortParam === 'price' ? 'price' : 'name'
+  const sortDir: SortDir = dirParam === 'desc' ? 'desc' : 'asc'
+  const perPage: PerPage = VALID_PER_PAGE.includes(Number(perPageParam) as PerPage)
+    ? (Number(perPageParam) as PerPage)
+    : 50
+  const page = Math.max(1, Number(pageParam) || 1)
 
-  const [allProducts, categories] = await Promise.all([getProducts(), getCategories()])
+  const [{ data: products, count }, categories, productCounts] = await Promise.all([
+    getProductsFiltered({
+      category: selectedCategory,
+      branchSlug: selectedBranch,
+      search: searchText,
+      sortBy,
+      sortDir,
+      page,
+      perPage,
+    }),
+    getCategories(),
+    getProductCounts(),
+  ])
 
-  // Tập hợp slug của các danh mục thuộc branch đang lọc
-  const branchCategorySlugs =
-    selectedBranch !== 'all'
-      ? new Set(categories.filter((c) => c.branch === selectedBranch).map((c) => c.slug))
-      : null
-
-  const filtered = allProducts.filter((p) => {
-    const matchBranch = branchCategorySlugs === null || branchCategorySlugs.has(p.category)
-    const matchCat = selectedCategory === 'all' || p.category === selectedCategory
-    const matchSearch =
-      searchText.trim() === '' ||
-      p.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchText.toLowerCase())
-    return matchBranch && matchCat && matchSearch
-  })
-
-  const productCounts: Record<string, number> = Object.fromEntries(
-    categories.map((cat) => [cat.slug, allProducts.filter((p) => p.category === cat.slug).length])
-  )
+  const totalPages = Math.ceil(count / perPage)
 
   const categoryMap = Object.fromEntries(categories.map((c) => [c.slug, c]))
 
+  const totalCount = Object.values(productCounts).reduce((a, b) => a + b, 0)
+
+  // Build href cho pagination — giữ nguyên tất cả params, chỉ đổi page
+  const buildHref = (p: number) => {
+    const params = new URLSearchParams()
+    if (selectedCategory !== 'all') params.set('category', selectedCategory)
+    if (selectedBranch !== 'all') params.set('branch', selectedBranch)
+    if (searchText) params.set('search', searchText)
+    if (sortBy !== 'name') params.set('sort', sortBy)
+    if (sortDir !== 'asc') params.set('dir', sortDir)
+    if (perPage !== 50) params.set('per_page', String(perPage))
+    params.set('page', String(p))
+    return `/san-pham?${params.toString()}`
+  }
+
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
-      {/* Page Header */}
-      {selectedBranch === 'hang-thai-lan' ? (
-        <div className="bg-gradient-to-r from-[#b91c1c] to-[#dc2626] text-white py-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-3 mb-1">
-              <span className="text-3xl">🇹🇭</span>
-              <h1 className="text-2xl md:text-3xl font-bold">Hàng Tiêu Dùng Thái Lan</h1>
+    <div className="min-h-screen bg-white">
+      {/* Page Header — cùng cấu trúc để tránh nhảy layout */}
+      {(() => {
+        const headers = {
+          'hang-thai-lan': {
+            gradient: 'from-[#1a3a6b] to-[#1a56db]',
+            subColor: 'text-blue-200',
+            icon: '🇹🇭',
+            title: 'Hàng Tiêu Dùng Thái Lan',
+            sub: 'Nước giặt, nước xả, vệ sinh nhà cửa, chăm sóc cá nhân – nhập khẩu chính ngạch',
+          },
+          'van-phong-pham': {
+            gradient: 'from-[#1a3a6b] to-[#1a56db]',
+            subColor: 'text-blue-200',
+            icon: '📋',
+            title: 'Văn Phòng Phẩm',
+            sub: 'Giấy in A4, bìa Thái, nhựa ép, tập vở, văn phòng phẩm – giá sỉ tốt nhất',
+          },
+          all: {
+            gradient: 'from-[#1a3a6b] to-[#1a56db]',
+            subColor: 'text-blue-200',
+            icon: '🛍️',
+            title: 'Sản phẩm',
+            sub: 'Văn phòng phẩm & hàng tiêu dùng Thái Lan – giá sỉ tốt nhất, hàng sẵn kho',
+          },
+        }
+        const h = headers[selectedBranch as keyof typeof headers] ?? headers.all
+        return (
+          <div className={`bg-gradient-to-r ${h.gradient} text-white py-10`}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center gap-3 mb-1">
+                <span className="text-3xl">{h.icon}</span>
+                <h1 className="text-2xl md:text-3xl font-bold">{h.title}</h1>
+              </div>
+              <p className={`${h.subColor} text-sm`}>{h.sub}</p>
             </div>
-            <p className="text-red-200 text-sm">
-              Nước giặt, nước xả, vệ sinh nhà cửa, chăm sóc cá nhân – nhập khẩu chính ngạch
-            </p>
           </div>
-        </div>
-      ) : selectedBranch === 'van-phong-pham' ? (
-        <div className="bg-gradient-to-r from-[#1a3a6b] to-[#1a56db] text-white py-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-3 mb-1">
-              <span className="text-3xl">📋</span>
-              <h1 className="text-2xl md:text-3xl font-bold">Văn Phòng Phẩm</h1>
-            </div>
-            <p className="text-blue-200 text-sm">
-              Giấy in A4, bìa Thái, nhựa ép, tập vở, văn phòng phẩm – giá sỉ tốt nhất
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-gradient-to-r from-[#1a3a6b] to-[#1a56db] text-white py-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">Sản phẩm</h1>
-            <p className="text-blue-200 text-sm">
-              Văn phòng phẩm & hàng tiêu dùng Thái Lan – giá sỉ tốt nhất, hàng sẵn kho
-            </p>
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* ProductFilter: sidebar danh mục + ô tìm kiếm (client component) */}
           <ProductFilter
             categories={categories}
             productCounts={productCounts}
-            totalCount={allProducts.length}
+            totalCount={totalCount}
             selectedCategory={selectedCategory}
             selectedBranch={selectedBranch}
             searchText={searchText}
+            sortBy={sortBy}
+            sortDir={sortDir}
+            perPage={perPage}
           />
 
-          {/* Lưới sản phẩm — server-rendered HTML, Google crawl được đầy đủ */}
           <div className="flex-1 min-w-0">
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
-              <ProductSearch selectedCategory={selectedCategory} searchText={searchText} />
-              <div className="flex items-center text-sm text-gray-500 bg-white border border-gray-200 rounded-xl px-4 py-2.5 whitespace-nowrap">
-                <span>
-                  <span className="font-semibold text-[#1a56db]">{filtered.length}</span> sản phẩm
-                </span>
-              </div>
+            <div className="mb-6">
+              <ProductSearch
+                selectedCategory={selectedCategory}
+                selectedBranch={selectedBranch}
+                searchText={searchText}
+                sortBy={sortBy}
+                sortDir={sortDir}
+                perPage={perPage}
+                count={count}
+              />
             </div>
 
-            {filtered.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filtered.map((product) => (
-                  <ProductCard
-                    key={product.slug}
-                    product={product}
-                    category={categoryMap[product.category]}
-                  />
-                ))}
-              </div>
+            {products.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.slug}
+                      product={product}
+                      category={categoryMap[product.category]}
+                    />
+                  ))}
+                </div>
+
+                <ProductPagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  buildHref={buildHref}
+                />
+              </>
             ) : (
               <div className="text-center py-20">
                 <div className="text-6xl mb-4">🔍</div>
