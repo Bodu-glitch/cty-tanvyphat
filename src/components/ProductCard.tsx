@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import type { ProductRow, CategoryRow } from '../lib/supabase/server'
 import { store } from '../data/store'
 import AddToCartButton from './AddToCartButton'
@@ -15,12 +16,14 @@ export default function ProductCard({ product, category }: ProductCardProps) {
   return (
     <div className="group flex flex-col">
       {/* Ảnh */}
-      <Link href={`/san-pham/${product.slug}`} className="block relative aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 mb-3">
+      <Link href={`/san-pham/${product.slug}`} className="block relative aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 mb-3">
         {hasImage ? (
-          <img
+          <Image
             src={product.images[0]}
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2">

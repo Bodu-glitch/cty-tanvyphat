@@ -23,6 +23,7 @@ export type BranchRow = {
   slug: string
   name: string
   icon: string
+  sort_order: number
 }
 
 export type CategoryRow = {
@@ -33,6 +34,7 @@ export type CategoryRow = {
   icon: string
   branch_id: number
   branch_slug: string
+  sort_order: number
   created_at: string
   updated_at: string
 }
@@ -49,6 +51,8 @@ export type ProductFilterParams = {
   sortDir?: SortDir
   page?: number
   perPage?: PerPage
+  sizes?: string[]
+  weights?: string[]
 }
 
 function getClient() {
@@ -83,6 +87,15 @@ export async function getProducts(): Promise<ProductRow[]> {
   return data ?? []
 }
 
+export async function getBranches(): Promise<BranchRow[]> {
+  const { data, error } = await getClient()
+    .from('branches')
+    .select('*')
+    .order('sort_order')
+  if (error) throw new Error(`getBranches: ${error.message}`)
+  return data ?? []
+}
+
 export async function getProductsFiltered(filter: ProductFilterParams = {}): Promise<{
   data: ProductRow[]
   count: number
@@ -95,6 +108,8 @@ export async function getProductsFiltered(filter: ProductFilterParams = {}): Pro
     sortDir = 'asc',
     page = 1,
     perPage = 50,
+    sizes,
+    weights,
   } = filter
 
   const client = getClient()
@@ -109,9 +124,10 @@ export async function getProductsFiltered(filter: ProductFilterParams = {}): Pro
     branchCategorySlugs = (cats ?? []).map((c: { slug: string }) => c.slug)
   }
 
+  // Include categories to allow ordering by sort_order for giay-in branch
   let query = client
     .from('products')
-    .select('*', { count: 'exact' })
+    .select('*, categories!products_category_fkey(sort_order)', { count: 'exact' })
 
   if (search && search.trim()) {
     const term = search.trim()
@@ -124,10 +140,22 @@ export async function getProductsFiltered(filter: ProductFilterParams = {}): Pro
     query = query.in('category', branchCategorySlugs)
   }
 
+  if (sizes && sizes.length > 0) {
+    query = query.or(sizes.map((s) => `name.ilike.%${s}%`).join(','))
+  }
+  if (weights && weights.length > 0) {
+    query = query.or(weights.map((w) => `name.ilike.%${w}%`).join(','))
+  }
+
   if (sortBy === 'price') {
     query = query
       .order('price', { ascending: sortDir === 'asc', nullsFirst: false })
       .order('name', { ascending: true })
+  } else if (branchSlug === 'giay-in') {
+    // Sort by brand priority (categories.sort_order), then by name (size/weight order)
+    query = (query as any)
+      .order('sort_order', { referencedTable: 'categories', ascending: true })
+      .order('name', { ascending: sortDir === 'asc' })
   } else {
     query = query
       .order('featured', { ascending: false })
@@ -172,7 +200,7 @@ export async function getCategories(): Promise<CategoryRow[]> {
     .from('categories')
     .select('*, branches!inner(slug)')
     .order('branch_id')
-    .order('id')
+    .order('sort_order')
   if (error) throw new Error(`getCategories: ${error.message}`)
   return (data ?? []).map((row: CategoryRow & { branches: { slug: string } }) => ({
     id: row.id,
@@ -182,6 +210,7 @@ export async function getCategories(): Promise<CategoryRow[]> {
     icon: row.icon,
     branch_id: row.branch_id,
     branch_slug: row.branches.slug,
+    sort_order: row.sort_order,
     created_at: row.created_at,
     updated_at: row.updated_at,
   }))

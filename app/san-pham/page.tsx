@@ -3,13 +3,16 @@ import {
   getProductsFiltered,
   getProductCounts,
   getCategories,
+  getBranches,
   type SortBy,
   type SortDir,
   type PerPage,
 } from '../../src/lib/supabase/server'
 import ProductCard from '../../src/components/ProductCard'
 import ProductFilter from '../../src/components/ProductFilter'
-import ProductSearch from '../../src/components/ProductSearch'
+import ProductHero from '../../src/components/ProductHero'
+import CategoryStrip from '../../src/components/CategoryStrip'
+import SortBar from '../../src/components/SortBar'
 import ProductPagination from '../../src/components/ProductPagination'
 
 export const metadata: Metadata = {
@@ -22,29 +25,33 @@ const VALID_PER_PAGE: PerPage[] = [50, 100, 200]
 
 type PageProps = {
   searchParams: Promise<{
-    category?: string
     branch?: string
+    category?: string
     search?: string
     sort?: string
     dir?: string
     per_page?: string
     page?: string
+    size?: string
+    weight?: string
   }>
 }
 
 export default async function SanPhamPage({ searchParams }: PageProps) {
   const {
-    category: categoryParam,
     branch: branchParam,
+    category: categoryParam,
     search: searchParam,
     sort: sortParam,
     dir: dirParam,
     per_page: perPageParam,
     page: pageParam,
+    size: sizeParam,
+    weight: weightParam,
   } = await searchParams
 
-  const selectedCategory = categoryParam ?? 'all'
   const selectedBranch = branchParam ?? 'all'
+  const selectedCategory = categoryParam ?? 'all'
   const searchText = searchParam ?? ''
   const sortBy: SortBy = sortParam === 'price' ? 'price' : 'name'
   const sortDir: SortDir = dirParam === 'desc' ? 'desc' : 'asc'
@@ -52,8 +59,10 @@ export default async function SanPhamPage({ searchParams }: PageProps) {
     ? (Number(perPageParam) as PerPage)
     : 50
   const page = Math.max(1, Number(pageParam) || 1)
+  const selectedSizes = sizeParam ? sizeParam.split(',').filter(Boolean) : []
+  const selectedWeights = weightParam ? weightParam.split(',').filter(Boolean) : []
 
-  const [{ data: products, count }, categories, productCounts] = await Promise.all([
+  const [{ data: products, count }, categories, branches, productCounts] = await Promise.all([
     getProductsFiltered({
       category: selectedCategory,
       branchSlug: selectedBranch,
@@ -62,98 +71,87 @@ export default async function SanPhamPage({ searchParams }: PageProps) {
       sortDir,
       page,
       perPage,
+      sizes: selectedSizes,
+      weights: selectedWeights,
     }),
     getCategories(),
+    getBranches(),
     getProductCounts(),
   ])
 
   const totalPages = Math.ceil(count / perPage)
-
   const categoryMap = Object.fromEntries(categories.map((c) => [c.slug, c]))
 
-  const totalCount = Object.values(productCounts).reduce((a, b) => a + b, 0)
-
-  // Build href cho pagination — giữ nguyên tất cả params, chỉ đổi page
   const buildHref = (p: number) => {
     const params = new URLSearchParams()
-    if (selectedCategory !== 'all') params.set('category', selectedCategory)
     if (selectedBranch !== 'all') params.set('branch', selectedBranch)
+    if (selectedCategory !== 'all') params.set('category', selectedCategory)
     if (searchText) params.set('search', searchText)
     if (sortBy !== 'name') params.set('sort', sortBy)
     if (sortDir !== 'asc') params.set('dir', sortDir)
     if (perPage !== 50) params.set('per_page', String(perPage))
+    if (selectedSizes.length) params.set('size', selectedSizes.join(','))
+    if (selectedWeights.length) params.set('weight', selectedWeights.join(','))
     params.set('page', String(p))
     return `/san-pham?${params.toString()}`
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Page Header — cùng cấu trúc để tránh nhảy layout */}
-      {(() => {
-        const headers = {
-          'hang-thai-lan': {
-            gradient: 'from-[#1a3a6b] to-[#1a56db]',
-            subColor: 'text-blue-200',
-            icon: '🇹🇭',
-            title: 'Hàng Tiêu Dùng Thái Lan',
-            sub: 'Nước giặt, nước xả, vệ sinh nhà cửa, chăm sóc cá nhân – nhập khẩu chính ngạch',
-          },
-          'van-phong-pham': {
-            gradient: 'from-[#1a3a6b] to-[#1a56db]',
-            subColor: 'text-blue-200',
-            icon: '📋',
-            title: 'Văn Phòng Phẩm',
-            sub: 'Giấy in A4, bìa Thái, nhựa ép, tập vở, văn phòng phẩm – giá sỉ tốt nhất',
-          },
-          all: {
-            gradient: 'from-[#1a3a6b] to-[#1a56db]',
-            subColor: 'text-blue-200',
-            icon: '🛍️',
-            title: 'Sản phẩm',
-            sub: 'Văn phòng phẩm & hàng tiêu dùng Thái Lan – giá sỉ tốt nhất, hàng sẵn kho',
-          },
-        }
-        const h = headers[selectedBranch as keyof typeof headers] ?? headers.all
-        return (
-          <div className={`bg-gradient-to-r ${h.gradient} text-white py-10`}>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center gap-3 mb-1">
-                <span className="text-3xl">{h.icon}</span>
-                <h1 className="text-2xl md:text-3xl font-bold">{h.title}</h1>
-              </div>
-              <p className={`${h.subColor} text-sm`}>{h.sub}</p>
-            </div>
-          </div>
-        )
-      })()}
+    <div className="min-h-screen bg-gray-50">
+      <ProductHero
+        branches={branches}
+        selectedBranch={selectedBranch}
+        searchText={searchText}
+        selectedCategory={selectedCategory}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        perPage={perPage}
+        selectedSizes={selectedSizes}
+        selectedWeights={selectedWeights}
+      />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          <ProductFilter
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {selectedBranch !== 'all' && (
+          <CategoryStrip
             categories={categories}
-            productCounts={productCounts}
-            totalCount={totalCount}
-            selectedCategory={selectedCategory}
             selectedBranch={selectedBranch}
+            selectedCategory={selectedCategory}
             searchText={searchText}
             sortBy={sortBy}
             sortDir={sortDir}
             perPage={perPage}
           />
+        )}
+
+        <div className="mt-6 mb-4">
+          <SortBar
+            sortBy={sortBy}
+            sortDir={sortDir}
+            count={count}
+            selectedBranch={selectedBranch}
+            selectedCategory={selectedCategory}
+            searchText={searchText}
+            perPage={perPage}
+            selectedSizes={selectedSizes}
+            selectedWeights={selectedWeights}
+          />
+        </div>
+
+        <div className="flex gap-6 pb-12">
+          <ProductFilter
+            categories={categories}
+            productCounts={productCounts}
+            selectedBranch={selectedBranch}
+            selectedCategory={selectedCategory}
+            searchText={searchText}
+            sortBy={sortBy}
+            sortDir={sortDir}
+            perPage={perPage}
+            selectedSizes={selectedSizes}
+            selectedWeights={selectedWeights}
+          />
 
           <div className="flex-1 min-w-0">
-            <div className="mb-6">
-              <ProductSearch
-                selectedCategory={selectedCategory}
-                selectedBranch={selectedBranch}
-                searchText={searchText}
-                sortBy={sortBy}
-                sortDir={sortDir}
-                perPage={perPage}
-                count={count}
-              />
-            </div>
-
             {products.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -165,7 +163,6 @@ export default async function SanPhamPage({ searchParams }: PageProps) {
                     />
                   ))}
                 </div>
-
                 <ProductPagination
                   currentPage={page}
                   totalPages={totalPages}

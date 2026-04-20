@@ -15,6 +15,7 @@ interface CartContextValue {
   items: CartItem[]
   totalItems: number
   totalPrice: number
+  hydrated: boolean
   addItem: (product: Omit<CartItem, 'quantity'>) => void
   removeItem: (productId: number) => void
   updateQuantity: (productId: number, quantity: number) => void
@@ -40,10 +41,12 @@ const CartContext = createContext<CartContextValue | null>(null)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
+  const [hydrated, setHydrated] = useState(false)
 
   // Hydrate from localStorage once on mount
   useEffect(() => {
     setItems(readStorage())
+    setHydrated(true)
   }, [])
 
   const persist = useCallback((next: CartItem[]) => {
@@ -90,7 +93,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalPrice = items.reduce((sum, i) => sum + (i.price ?? 0) * i.quantity, 0)
 
   return (
-    <CartContext.Provider value={{ items, totalItems, totalPrice, addItem, removeItem, updateQuantity, clearCart }}>
+    <CartContext.Provider value={{ items, totalItems, totalPrice, hydrated, addItem, removeItem, updateQuantity, clearCart }}>
       {children}
     </CartContext.Provider>
   )

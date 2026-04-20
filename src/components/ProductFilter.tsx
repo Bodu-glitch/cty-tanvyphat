@@ -4,170 +4,202 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useCallback, useState, useTransition } from 'react'
 import type { CategoryRow } from '../lib/supabase/server'
 
-type ProductFilterProps = {
+const SIZES = ['A4', 'A3', 'A5', 'A3L']
+const WEIGHTS = ['70gsm', '75gsm', '80gsm', '100gsm']
+
+type Props = {
   categories: CategoryRow[]
   productCounts: Record<string, number>
-  totalCount: number
-  selectedCategory: string
   selectedBranch: string
+  selectedCategory: string
   searchText: string
   sortBy: string
   sortDir: string
   perPage: number
+  selectedSizes: string[]
+  selectedWeights: string[]
 }
 
 export default function ProductFilter({
   categories,
   productCounts,
-  totalCount,
-  selectedCategory,
   selectedBranch,
+  selectedCategory,
   searchText,
   sortBy,
   sortDir,
   perPage,
-}: ProductFilterProps) {
+  selectedSizes,
+  selectedWeights,
+}: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const [, startTransition] = useTransition()
-  const [expandedBranches, setExpandedBranches] = useState<Set<string>>(
-    () => new Set(['van-phong-pham', 'hang-thai-lan'])
-  )
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => new Set(['size', 'weight', 'brand', 'type'])
+  )
 
-  const buildParams = useCallback(
-    (overrides: Record<string, string>) => {
+  const buildUrl = useCallback(
+    (overrides: { category?: string; sizes?: string[]; weights?: string[] }) => {
       const params = new URLSearchParams()
-      if (searchText.trim()) params.set('search', searchText.trim())
+      if (selectedBranch !== 'all') params.set('branch', selectedBranch)
+      const cat = overrides.category !== undefined ? overrides.category : selectedCategory
+      if (cat && cat !== 'all') params.set('category', cat)
+      if (searchText) params.set('search', searchText)
       if (sortBy !== 'name') params.set('sort', sortBy)
       if (sortDir !== 'asc') params.set('dir', sortDir)
       if (perPage !== 50) params.set('per_page', String(perPage))
-      for (const [k, v] of Object.entries(overrides)) {
-        if (v) params.set(k, v)
-        else params.delete(k)
-      }
-      return params.toString()
+      const sizes = overrides.sizes !== undefined ? overrides.sizes : selectedSizes
+      const weights = overrides.weights !== undefined ? overrides.weights : selectedWeights
+      if (sizes.length) params.set('size', sizes.join(','))
+      if (weights.length) params.set('weight', weights.join(','))
+      const qs = params.toString()
+      return qs ? `${pathname}?${qs}` : pathname
     },
-    [searchText, sortBy, sortDir, perPage]
+    [pathname, selectedBranch, selectedCategory, searchText, sortBy, sortDir, perPage, selectedSizes, selectedWeights]
   )
 
   const go = useCallback(
-    (qs: string) => {
+    (url: string) => {
       setDrawerOpen(false)
-      startTransition(() => { router.push(qs ? `${pathname}?${qs}` : pathname) })
+      startTransition(() => router.push(url))
     },
-    [router, pathname]
+    [router]
   )
 
-  const navigateAll    = useCallback(() => go(buildParams({})), [go, buildParams])
-  const navigateBranch = useCallback((branch: string) => go(buildParams({ branch })), [go, buildParams])
-  const navigateCategory = useCallback((slug: string) => go(buildParams({ category: slug })), [go, buildParams])
+  const toggleSize = (size: string) => {
+    const next = selectedSizes.includes(size)
+      ? selectedSizes.filter((s) => s !== size)
+      : [...selectedSizes, size]
+    go(buildUrl({ sizes: next }))
+  }
 
-  const toggleBranch = (branch: string) => {
-    setExpandedBranches((prev) => {
+  const toggleWeight = (weight: string) => {
+    const next = selectedWeights.includes(weight)
+      ? selectedWeights.filter((w) => w !== weight)
+      : [...selectedWeights, weight]
+    go(buildUrl({ weights: next }))
+  }
+
+  const toggleCategory = (slug: string) => {
+    const next = selectedCategory === slug ? 'all' : slug
+    go(buildUrl({ category: next }))
+  }
+
+  const toggleExpand = (key: string) => {
+    setExpanded((prev) => {
       const next = new Set(prev)
-      if (next.has(branch)) next.delete(branch)
-      else next.add(branch)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
   }
 
-  const isAllSelected = selectedCategory === 'all' && selectedBranch === 'all'
-  const vpp  = categories.filter((c) => c.branch_slug === 'van-phong-pham')
-  const thai = categories.filter((c) => c.branch_slug === 'hang-thai-lan')
+  const branchCats = categories.filter((c) => c.branch_slug === selectedBranch)
 
-  const branchCount = (branchSlug: string) =>
-    categories
-      .filter((c) => c.branch_slug === branchSlug)
-      .reduce((sum, c) => sum + (productCounts[c.slug] ?? 0), 0)
+  if (selectedBranch === 'all') return null
 
-  const navContent = (
-    <nav className="space-y-0.5">
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">Danh mục</p>
+  const filterContent = (
+    <div>
+      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Bộ lọc</p>
 
-      <button
-        onClick={navigateAll}
-        className={`w-full flex items-center justify-between px-1 py-1.5 rounded-md text-sm transition-colors ${
-          isAllSelected ? 'text-[#1a56db] font-semibold' : 'text-gray-600 hover:text-gray-900'
-        }`}
-      >
-        <span>Tất cả sản phẩm</span>
-        <span className={`text-xs tabular-nums ${isAllSelected ? 'text-[#1a56db]' : 'text-gray-400'}`}>
-          {totalCount}
-        </span>
-      </button>
+      {selectedBranch === 'giay-in' && (
+        <>
+          <FilterSection
+            title="Kích thước"
+            sectionKey="size"
+            expanded={expanded.has('size')}
+            onToggle={() => toggleExpand('size')}
+          >
+            {SIZES.map((size) => (
+              <CheckItem
+                key={size}
+                label={size}
+                checked={selectedSizes.includes(size)}
+                onChange={() => toggleSize(size)}
+              />
+            ))}
+          </FilterSection>
+          <FilterSection
+            title="Định lượng"
+            sectionKey="weight"
+            expanded={expanded.has('weight')}
+            onToggle={() => toggleExpand('weight')}
+          >
+            {WEIGHTS.map((w) => (
+              <CheckItem
+                key={w}
+                label={w}
+                checked={selectedWeights.includes(w)}
+                onChange={() => toggleWeight(w)}
+              />
+            ))}
+          </FilterSection>
+        </>
+      )}
 
-      <div className="pt-2 space-y-0.5">
-        <BranchGroup
-          branchKey="van-phong-pham"
-          label="Văn Phòng Phẩm"
-          icon="📋"
-          color="blue"
-          expanded={expandedBranches.has('van-phong-pham')}
-          isSelected={selectedBranch === 'van-phong-pham' && selectedCategory === 'all'}
-          branchCount={branchCount('van-phong-pham')}
-          onToggleExpand={() => toggleBranch('van-phong-pham')}
-          onSelectBranch={() => navigateBranch('van-phong-pham')}
+      {selectedBranch === 'van-phong-pham' && (
+        <FilterSection
+          title="Thương hiệu"
+          sectionKey="brand"
+          expanded={expanded.has('brand')}
+          onToggle={() => toggleExpand('brand')}
         >
-          {vpp.map((cat) => (
-            <CategoryItem
+          {branchCats.map((cat) => (
+            <CheckItem
               key={cat.slug}
-              cat={cat}
+              label={cat.name}
               count={productCounts[cat.slug] ?? 0}
-              isSelected={selectedCategory === cat.slug}
-              color="blue"
-              onClick={() => navigateCategory(cat.slug)}
+              checked={selectedCategory === cat.slug}
+              onChange={() => toggleCategory(cat.slug)}
             />
           ))}
-        </BranchGroup>
+        </FilterSection>
+      )}
 
-        <BranchGroup
-          branchKey="hang-thai-lan"
-          label="Hàng Thái Lan"
-          icon="🇹🇭"
-          color="red"
-          expanded={expandedBranches.has('hang-thai-lan')}
-          isSelected={selectedBranch === 'hang-thai-lan' && selectedCategory === 'all'}
-          branchCount={branchCount('hang-thai-lan')}
-          onToggleExpand={() => toggleBranch('hang-thai-lan')}
-          onSelectBranch={() => navigateBranch('hang-thai-lan')}
+      {selectedBranch === 'hang-thai-lan' && (
+        <FilterSection
+          title="Loại sản phẩm"
+          sectionKey="type"
+          expanded={expanded.has('type')}
+          onToggle={() => toggleExpand('type')}
         >
-          {thai.map((cat) => (
-            <CategoryItem
+          {branchCats.map((cat) => (
+            <CheckItem
               key={cat.slug}
-              cat={cat}
+              label={cat.name}
               count={productCounts[cat.slug] ?? 0}
-              isSelected={selectedCategory === cat.slug}
-              color="red"
-              onClick={() => navigateCategory(cat.slug)}
+              checked={selectedCategory === cat.slug}
+              onChange={() => toggleCategory(cat.slug)}
             />
           ))}
-        </BranchGroup>
-      </div>
-    </nav>
+        </FilterSection>
+      )}
+    </div>
   )
 
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:block lg:w-52 shrink-0">
-        <div className="lg:sticky lg:top-20">
-          {navContent}
+      <aside className="hidden lg:block w-48 shrink-0">
+        <div className="sticky top-20 bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+          {filterContent}
         </div>
       </aside>
 
-      {/* Mobile: nút mở drawer */}
+      {/* Mobile: open button */}
       <button
         onClick={() => setDrawerOpen(true)}
         className="lg:hidden fixed bottom-6 left-4 z-30 flex items-center gap-2 bg-[#1a56db] text-white pl-3 pr-4 py-2.5 rounded-full shadow-lg text-sm font-medium"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
         </svg>
-        Danh mục
+        Bộ lọc
       </button>
 
-      {/* Mobile: backdrop */}
+      {/* Mobile backdrop */}
       <div
         onClick={() => setDrawerOpen(false)}
         className={`lg:hidden fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ${
@@ -175,14 +207,14 @@ export default function ProductFilter({
         }`}
       />
 
-      {/* Mobile: drawer panel */}
+      {/* Mobile drawer */}
       <div
         className={`lg:hidden fixed inset-y-0 left-0 w-72 bg-white z-50 p-6 overflow-y-auto shadow-xl transition-transform duration-300 ${
           drawerOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex items-center justify-between mb-5">
-          <span className="font-semibold text-gray-900">Danh mục</span>
+          <span className="font-semibold text-gray-900">Bộ lọc</span>
           <button
             onClick={() => setDrawerOpen(false)}
             className="p-1.5 text-gray-400 hover:text-gray-700 rounded-md"
@@ -192,90 +224,74 @@ export default function ProductFilter({
             </svg>
           </button>
         </div>
-        {navContent}
+        {filterContent}
       </div>
     </>
   )
 }
 
-// ─── Sub-components ───────────────────────────────────────────────
-
-function BranchGroup({
-  label, icon, color, expanded, isSelected, branchCount, onToggleExpand, onSelectBranch, children,
+function FilterSection({
+  title,
+  expanded,
+  onToggle,
+  children,
 }: {
-  branchKey: string
-  label: string
-  icon: string
-  color: 'blue' | 'red'
+  title: string
+  sectionKey: string
   expanded: boolean
-  isSelected: boolean
-  branchCount: number
-  onToggleExpand: () => void
-  onSelectBranch: () => void
+  onToggle: () => void
   children: React.ReactNode
 }) {
-  const activeText = color === 'blue' ? 'text-[#1a56db]' : 'text-[#dc2626]'
-  const activeDot  = color === 'blue' ? 'bg-[#1a56db]'   : 'bg-[#dc2626]'
-
   return (
-    <div>
-      <div className="flex items-center">
-        <span className={`w-1 h-1 rounded-full mr-2 flex-shrink-0 transition-all ${isSelected ? activeDot : 'bg-transparent'}`} />
-        <button
-          onClick={onSelectBranch}
-          className={`flex items-center gap-1.5 flex-1 py-1.5 text-sm font-semibold transition-colors ${
-            isSelected ? activeText : 'text-gray-700 hover:text-gray-900'
-          }`}
+    <div className="py-3 border-b border-gray-100 last:border-0">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between mb-2"
+      >
+        <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">{title}</span>
+        <svg
+          className={`w-3.5 h-3.5 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
         >
-          <span className="text-base leading-none">{icon}</span>
-          <span className="flex-1 text-left truncate">{label}</span>
-          <span className={`text-xs font-normal tabular-nums mr-1 ${isSelected ? activeText : 'text-gray-400'}`}>
-            {branchCount}
-          </span>
-        </button>
-        <button
-          onClick={onToggleExpand}
-          className="p-1 text-gray-400 hover:text-gray-600"
-          aria-label={expanded ? 'Thu gọn' : 'Mở rộng'}
-        >
-          <svg
-            className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`}
-            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-      </div>
-      {expanded && (
-        <div className="ml-3 mt-0.5 pl-3 border-l border-gray-200 space-y-0.5">
-          {children}
-        </div>
-      )}
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {expanded && <div className="space-y-2.5 mt-3">{children}</div>}
     </div>
   )
 }
 
-function CategoryItem({
-  cat, count, isSelected, color, onClick,
+function CheckItem({
+  label,
+  count,
+  checked,
+  onChange,
 }: {
-  cat: CategoryRow
-  count: number
-  isSelected: boolean
-  color: 'blue' | 'red'
-  onClick: () => void
+  label: string
+  count?: number
+  checked: boolean
+  onChange: () => void
 }) {
-  const activeText = color === 'blue' ? 'text-[#1a56db]' : 'text-[#dc2626]'
-
   return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-2 py-1.5 px-1 text-sm transition-colors ${
-        isSelected ? `${activeText} font-medium` : 'text-gray-500 hover:text-gray-900'
-      }`}
-    >
-      <span className="text-sm leading-none">{cat.icon}</span>
-      <span className="flex-1 text-left truncate">{cat.name}</span>
-      <span className={`text-xs tabular-nums ${isSelected ? activeText : 'text-gray-400'}`}>{count}</span>
-    </button>
+    <label className="flex items-center gap-2.5 cursor-pointer group">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="w-4 h-4 rounded border-gray-300 text-[#1a56db] focus:ring-[#1a56db] cursor-pointer"
+      />
+      <span
+        className={`flex-1 text-sm ${
+          checked ? 'text-[#1a56db] font-medium' : 'text-gray-600 group-hover:text-gray-900'
+        }`}
+      >
+        {label}
+      </span>
+      {count !== undefined && (
+        <span className={`text-xs tabular-nums ${checked ? 'text-[#1a56db]' : 'text-gray-400'}`}>
+          {count}
+        </span>
+      )}
+    </label>
   )
 }

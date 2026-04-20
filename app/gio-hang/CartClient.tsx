@@ -12,12 +12,14 @@ interface Props {
 }
 
 function CartPageContent({ categoryMap }: Props) {
-  const { items, totalItems, totalPrice, addItem, removeItem, updateQuantity } = useCart()
+  const { items, totalItems, totalPrice, hydrated, addItem, removeItem, updateQuantity } = useCart()
   const { setFbUserId } = useFbUserId()
   const router = useRouter()
   const searchParams = useSearchParams()
   const addHandled = useRef(false)
   const [relatedProducts, setRelatedProducts] = useState<ProductRow[]>([])
+  const [relatedLoading, setRelatedLoading] = useState(false)
+  const [isAdding, setIsAdding] = useState(() => !!searchParams.get('add'))
 
   // Fetch related products when cart items change
   useEffect(() => {
@@ -25,11 +27,13 @@ function CartPageContent({ categoryMap }: Props) {
       setRelatedProducts([])
       return
     }
+    setRelatedLoading(true)
     const ids = items.map((i) => i.productId).join(',')
     fetch(`/api/products/related?ids=${ids}`)
       .then((r) => (r.ok ? r.json() : { products: [] }))
       .then((data) => setRelatedProducts(data.products ?? []))
       .catch(() => {})
+      .finally(() => setRelatedLoading(false))
   }, [items.map((i) => i.productId).join(',')])  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -42,6 +46,7 @@ function CartPageContent({ categoryMap }: Props) {
     if (fbid) setFbUserId(fbid)
 
     if (addId) {
+      setIsAdding(true)
       fetch(`/api/products/${addId}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((product) => {
@@ -57,18 +62,61 @@ function CartPageContent({ categoryMap }: Props) {
         })
         .catch(() => {})
         .finally(() => {
+          setIsAdding(false)
           router.replace('/gio-hang', { scroll: false })
         })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const carousel = relatedProducts.length > 0 && (
+  const carousel = relatedLoading ? (
+    <section className="mt-16 border-t border-gray-100 pt-10">
+      <div className="h-6 bg-gray-200 rounded w-48 mb-6 animate-pulse" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-pulse">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="space-y-2">
+            <div className="aspect-square bg-gray-200 rounded-lg" />
+            <div className="h-4 bg-gray-200 rounded w-3/4" />
+            <div className="h-4 bg-gray-200 rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+    </section>
+  ) : relatedProducts.length > 0 ? (
     <section className="mt-16 border-t border-gray-100 pt-10">
       <h2 className="text-lg font-bold text-gray-900 mb-6">Có thể bạn cũng thích</h2>
       <FeaturedCarousel products={relatedProducts} categoryMap={categoryMap} />
     </section>
-  )
+  ) : null
+
+  if (!hydrated || isAdding) {
+    return (
+      <main className="min-h-screen bg-white py-10 px-4">
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-2xl font-bold text-gray-900 mb-8">GIỎ HÀNG CỦA BẠN</h1>
+          <div className="flex flex-col lg:flex-row gap-8 items-start animate-pulse">
+            <div className="flex-1 space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex gap-4 py-5 border-b border-gray-100">
+                  <div className="w-20 h-20 rounded-lg bg-gray-200 flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-3/4" />
+                    <div className="h-4 bg-gray-200 rounded w-1/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="w-full lg:w-72 border border-gray-200 rounded-lg p-6 space-y-4">
+              <div className="h-5 bg-gray-200 rounded w-1/2" />
+              <div className="h-4 bg-gray-200 rounded" />
+              <div className="h-10 bg-gray-200 rounded" />
+              <div className="h-10 bg-gray-200 rounded" />
+            </div>
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   if (totalItems === 0) {
     return (
