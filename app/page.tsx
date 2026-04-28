@@ -47,10 +47,7 @@ export default async function Home() {
   return (
     <>
       {/* Banner Carousel */}
-      <div className="relative h-[420px] sm:h-[520px] md:h-[600px] overflow-hidden">
-        <BannerCarousel />
-        <Link href="/san-pham" className="absolute inset-0 z-30 cursor-pointer" aria-label="Xem sản phẩm" />
-      </div>
+      <BannerCarousel />
 
       {/* About Mini */}
       <section className="py-12 bg-[#f8fafc]">
