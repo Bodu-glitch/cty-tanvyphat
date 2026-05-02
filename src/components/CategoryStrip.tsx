@@ -5,6 +5,35 @@ import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import type { CategoryRow } from '../lib/supabase/server'
 
+// Slug đã có logo trong Supabase Storage → product-images/brand-logos/[slug].png
+const BRAND_LOGO_SLUGS = new Set([
+  'double-a',
+  'double-a-vpp',
+  'idea',
+  'paper-one',
+  'plus',
+  'thien-long',
+])
+
+const LOGO_BASE =
+  `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/brand-logos`
+
+function BrandIcon({ slug, fallbackIcon }: { slug: string; fallbackIcon: string }) {
+  const [errored, setErrored] = useState(false)
+  if (!BRAND_LOGO_SLUGS.has(slug) || errored) {
+    return <span className="text-2xl leading-none">{fallbackIcon}</span>
+  }
+  return (
+    <img
+      src={`${LOGO_BASE}/${slug}.png`}
+      alt=""
+      className="h-8 w-full object-contain"
+      loading="lazy"
+      onError={() => setErrored(true)}
+    />
+  )
+}
+
 type Props = {
   categories: CategoryRow[]
   selectedBranch: string
@@ -84,7 +113,7 @@ export default function CategoryStrip({
                   : 'bg-[#f0f4ff] text-gray-700 hover:bg-[#dce8ff] hover:text-[#1a56db]'
               }`}
             >
-              <span className="text-2xl leading-none">{cat.icon}</span>
+              <BrandIcon slug={cat.slug} fallbackIcon={cat.icon} />
               <span className="text-xs font-medium text-center leading-tight w-full truncate">
                 {cat.name}
               </span>
