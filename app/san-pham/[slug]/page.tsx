@@ -82,7 +82,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
         telephone: store.phone,
         address: {
           '@type': 'PostalAddress',
-          streetAddress: '149/9 Tân Thới Nhất 17',
+          streetAddress: '1/6 Đường Tân Thới Nhất 22',
           addressLocality: 'Quận 12',
           addressRegion: 'TP. Hồ Chí Minh',
           addressCountry: 'VN',

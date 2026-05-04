@@ -21,7 +21,7 @@ const strengths = [
 const stats = [
   { value: '700+', label: 'Khách hàng', sub: 'tin tưởng hợp tác' },
   { value: 'Toàn quốc', label: 'Phạm vi giao hàng', sub: '63 tỉnh thành' },
-  { value: 'Q.12 TPHCM', label: 'Địa chỉ kho', sub: '149/9 Tân Thới Nhất 17' },
+  { value: 'Q.12 TPHCM', label: 'Địa chỉ kho', sub: '1/6 Đường Tân Thới Nhất 22' },
   { value: '5+', label: 'Năm kinh nghiệm', sub: 'trong ngành giấy & VPP' },
 ]
 
