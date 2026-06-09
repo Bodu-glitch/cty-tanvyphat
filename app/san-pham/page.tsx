@@ -110,7 +110,7 @@ export default async function SanPhamPage({ searchParams }: PageProps) {
         selectedWeights={selectedWeights}
       />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8">
         {selectedBranch !== 'all' && (
           <CategoryStrip
             categories={categories}
@@ -154,7 +154,7 @@ export default async function SanPhamPage({ searchParams }: PageProps) {
           <div className="flex-1 min-w-0">
             {products.length > 0 ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-1 sm:gap-6">
                   {products.map((product) => (
                     <ProductCard
                       key={product.slug}

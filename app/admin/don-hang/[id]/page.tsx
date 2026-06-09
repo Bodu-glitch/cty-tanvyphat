@@ -103,10 +103,39 @@ export default async function AdminOrderDetailPage({
           <div className="space-y-1 text-sm text-gray-700">
             <p><span className="text-gray-500">Tên:</span> {order.customer_name}</p>
             <p><span className="text-gray-500">SĐT:</span> {order.customer_phone}</p>
+            {(order.province || order.district) && (
+              <p>
+                <span className="text-gray-500">Khu vực:</span>{' '}
+                {[order.district, order.province].filter(Boolean).join(', ')}
+              </p>
+            )}
             <p><span className="text-gray-500">Địa chỉ:</span> {order.customer_address}</p>
             {order.note && (
               <p><span className="text-gray-500">Ghi chú:</span> {order.note}</p>
             )}
+          </div>
+        </div>
+
+        {/* Payment & Shipping */}
+        <div className="bg-white rounded-2xl shadow-sm p-4">
+          <h2 className="font-semibold text-gray-700 text-sm mb-3">Thanh toán & Giao hàng</h2>
+          <div className="space-y-1 text-sm text-gray-700">
+            <p>
+              <span className="text-gray-500">Phương thức:</span>{' '}
+              {order.payment_method === 'bank_transfer' ? 'Chuyển khoản ngân hàng' : 'COD (tiền mặt)'}
+            </p>
+            <p>
+              <span className="text-gray-500">Trạng thái TT:</span>{' '}
+              <span className={order.payment_status === 'paid' ? 'text-green-600 font-medium' : 'text-orange-600'}>
+                {order.payment_status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+              </span>
+            </p>
+            <p>
+              <span className="text-gray-500">Phí ship:</span>{' '}
+              {Number(order.shipping_fee ?? 0) > 0
+                ? Number(order.shipping_fee).toLocaleString('vi-VN') + 'đ'
+                : 'Miễn phí'}
+            </p>
           </div>
         </div>
 

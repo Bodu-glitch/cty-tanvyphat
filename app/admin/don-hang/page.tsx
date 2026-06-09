@@ -93,6 +93,7 @@ export default async function AdminOrdersPage({
                     <th className="text-left px-4 py-3 text-gray-500 font-medium">Khách hàng</th>
                     <th className="text-left px-4 py-3 text-gray-500 font-medium">SĐT</th>
                     <th className="text-left px-4 py-3 text-gray-500 font-medium">Tổng tiền</th>
+                    <th className="text-left px-4 py-3 text-gray-500 font-medium">Thanh toán</th>
                     <th className="text-left px-4 py-3 text-gray-500 font-medium">Trạng thái</th>
                     <th className="text-left px-4 py-3 text-gray-500 font-medium">Ngày tạo</th>
                     <th className="px-4 py-3"></th>
@@ -101,6 +102,8 @@ export default async function AdminOrdersPage({
                 <tbody className="divide-y divide-gray-50">
                   {orders.map((order: Record<string, unknown>) => {
                     const s = STATUS_LABELS[order.status as string] ?? { label: order.status as string, color: 'bg-gray-100 text-gray-600' }
+                    const isCK = order.payment_method === 'bank_transfer'
+                    const isPaid = order.payment_status === 'paid'
                     return (
                       <tr key={order.id as string} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-gray-700">{order.customer_name as string}</td>
@@ -109,6 +112,15 @@ export default async function AdminOrdersPage({
                           {Number(order.total_price ?? 0) > 0
                             ? Number(order.total_price).toLocaleString('vi-VN') + 'đ'
                             : 'Liên hệ'}
+                        </td>
+                        <td className="px-4 py-3">
+                          {isCK ? (
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isPaid ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                              {isPaid ? 'CK ✓' : 'CK ⏳'}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-500">COD</span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.color}`}>

@@ -14,13 +14,20 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { customer_name, customer_phone, customer_address, note, fb_user_id, items } = body as {
+  const {
+    customer_name, customer_phone, customer_address,
+    note, fb_user_id, items,
+    shipping_fee, province, district,
+  } = body as {
     customer_name: string
     customer_phone: string
     customer_address: string
     note?: string
     fb_user_id?: string
     items: OrderItem[]
+    shipping_fee?: number
+    province?: string
+    district?: string
   }
 
   if (!customer_name || !customer_phone || !customer_address) {
@@ -57,12 +64,14 @@ export async function POST(request: NextRequest) {
     }
   })
 
-  const total_price = resolvedItems.reduce(
+  const subtotal = resolvedItems.reduce(
     (sum, i) => sum + Number(i.product_price) * i.quantity,
     0
   )
+  const shippingFeeNum = Number(shipping_fee ?? 0)
+  const total_price = subtotal + shippingFeeNum
 
-  // Create order
+  // Create order (COD only — bank_transfer goes through /api/payments/pending)
   const { data: order, error: orderError } = await db
     .from('orders')
     .insert({
@@ -71,7 +80,12 @@ export async function POST(request: NextRequest) {
       customer_address: customer_address.trim(),
       note: note?.trim() || null,
       total_price,
+      shipping_fee: shippingFeeNum,
+      province: province?.trim() || null,
+      district: district?.trim() || null,
       status: 'moi',
+      payment_method: 'cod',
+      payment_status: 'pending',
     })
     .select('id')
     .single()

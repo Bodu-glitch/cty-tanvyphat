@@ -25,8 +25,15 @@
 ```
 app/
   api/
-    webhook/facebook/route.ts      # Facebook webhook (GET verify + POST events)
-    orders/route.ts                # POST tạo đơn hàng từ checkout form
+    webhook/
+      facebook/route.ts            # Facebook webhook (GET verify + POST events)
+      sepay/route.ts               # SePay webhook — nhận giao dịch CK, tạo đơn hàng
+    orders/route.ts                # POST tạo đơn COD (bank_transfer dùng /api/payments/pending)
+    payments/
+      pending/route.ts             # POST lưu tạm form+giỏ hàng CK, trả token + QR content
+      [token]/route.ts             # GET poll trạng thái thanh toán (waiting/paid/expired)
+    shipping/
+      fee/route.ts                 # GET tính phí vận chuyển (freeship TP.HCM ≥4tr, còn lại GHTK)
     products/[id]/route.ts         # GET thông tin sản phẩm (dùng cho Facebook cart link)
     products/related/route.ts      # GET sản phẩm liên quan theo category
     admin/
@@ -40,14 +47,16 @@ app/
     page.tsx                       # Server component — trang sản phẩm với hero + filter + grid
     [slug]/page.tsx                # Trang chi tiết sản phẩm
   thanh-toan/
-    page.tsx                       # Client component — checkout form + order summary
+    page.tsx                       # Client component — checkout form, phí ship, QR modal
   admin/
     layout.tsx                     # Layout riêng, không có Navbar/Footer
     dang-nhap/page.tsx
-    don-hang/page.tsx
-    don-hang/[id]/page.tsx
+    don-hang/page.tsx              # Danh sách đơn + cột Thanh toán (COD / CK ✓ / CK ⏳)
+    don-hang/[id]/page.tsx         # Chi tiết đơn + card Thanh toán & Giao hàng
   auth/confirm/route.ts            # PKCE token exchange (password reset)
 src/
+  data/
+    provinces.ts                   # 63 tỉnh/TP + quận/huyện tĩnh, HCMC_DISTRICTS cho freeship
   contexts/
     CartContext.tsx                 # React Context — single source of truth cho cart
   hooks/
@@ -129,11 +138,30 @@ Thứ tự trong mỗi hãng: sort theo tên (A3 → A4 → A5).
 | `branches` | `id, slug, name, icon, sort_order` — 3 dòng: giay-in(10), van-phong-pham(20), hang-thai-lan(30) |
 | `categories` | `id, slug, name, icon, branch_id, sort_order` — sub-category của từng branch |
 | `products` | `id, slug, name, description, images[], price, stock, category(FK→categories.slug), keyword, featured, fb_post_url` |
-| `orders` | `id (UUID), customer_name, customer_phone, customer_address, note, total_price, status, created_at` |
-| `order_items` | `id (UUID), order_id (UUID FK), product_id, product_name, product_price, quantity` |
+| `orders` | `id (UUID), customer_name, customer_phone, customer_address, province, district, note, total_price, shipping_fee, payment_method, payment_status, status, created_at, updated_at` |
+| `order_items` | `id (bigint), order_id (UUID FK), product_id, product_name, product_price, quantity` |
 | `fb_customers` | `fb_user_id (PK), customer_name, customer_phone, customer_address, updated_at` |
+| `pending_payments` | `token (UUID PK), amount, shipping_fee, customer_*, province, district, note, fb_user_id, items (JSONB), status (waiting/paid/expired), order_id (FK), created_at, expires_at` |
 
 > **Lưu ý:** `orders.id` là **UUID** — `order_items.order_id` phải khai báo `UUID NOT NULL REFERENCES orders(id)`.
+
+### Trạng thái đơn hàng (`orders.status`)
+
+| Giá trị | Ý nghĩa |
+|---------|---------|
+| `moi` | Đơn mới — COD vừa đặt, hoặc CK đã xác nhận thanh toán |
+| `dang_xu_ly` | Đang xử lý / đóng gói |
+| `da_giao` | Đã giao thành công |
+| `huy` | Đã huỷ |
+
+> Không có trạng thái `cho_thanh_toan`. CK chờ TT lưu trong `pending_payments`, chỉ tạo `orders` sau khi SePay webhook xác nhận.
+
+### payment_method / payment_status
+
+| Field | Giá trị |
+|-------|---------|
+| `payment_method` | `cod` hoặc `bank_transfer` |
+| `payment_status` | `pending` (COD chưa thu) hoặc `paid` (CK đã xác nhận) |
 
 ### Categories hiện tại
 
@@ -148,12 +176,25 @@ Thứ tự trong mỗi hãng: sort theo tên (A3 → A4 → A5).
 
 > **Lưu ý folder mapping:** Thêm sản phẩm mới bằng cách đặt ảnh vào đúng folder trong `../san-pham/[branch]/[subfolder]/` rồi chạy lại `node scripts/upload-and-seed.mjs`. Folder names phân biệt hoa/thường — hang-thai-lan dùng ALL CAPS (BỘT GIẶT, NƯỚC GIẶT…).
 
-### Order flow
+### Order flow — COD
 
-1. Client POST `/api/orders` với `{ customer_name, customer_phone, customer_address, note, fb_user_id, items: [{product_id, quantity}] }`
-2. API fetch product info, tính `total_price`, insert `orders` → insert `order_items`
+1. Client POST `/api/orders` với `{ customer_name, customer_phone, customer_address, province, district, shipping_fee, note, fb_user_id, items }`
+2. API fetch product info, tính `total_price = subtotal + shipping_fee`, insert `orders` (payment_method=cod) → insert `order_items`
 3. Nếu có `fb_user_id`, upsert `fb_customers`
-4. Client gọi `clearCart()` sau khi thành công
+4. Client gọi `clearCart()`, hiện success screen
+
+### Order flow — Chuyển khoản (Bank Transfer)
+
+1. Client POST `/api/payments/pending` với cùng payload → trả `{ token, amount, transfer_content }`
+   - `transfer_content` = `TVP` + 8 ký tự hex đầu của token UUID (ví dụ: `TVP4DC0B4F8`)
+2. Frontend mở **QR modal** với QR SePay: `https://qr.sepay.vn/img?bank=MB&acc=120926868&template=compact&amount={amount}&des={transfer_content}`
+3. Frontend poll `GET /api/payments/{token}` mỗi 3 giây
+4. SePay gửi POST webhook `https://tanvyphat.com/api/webhook/sepay` khi nhận tiền
+   - Webhook verify header `Authorization: Apikey {SEPAY_WEBHOOK_SECRET}`
+   - Tìm `pending_payments` theo token prefix trong nội dung CK
+   - Tạo `orders` (payment_method=bank_transfer, payment_status=paid, status=moi) + `order_items`
+   - Update `pending_payments.status = paid`
+5. Frontend poll nhận `status=paid` → modal chuyển thành công → clearCart()
 
 ---
 
@@ -242,13 +283,28 @@ User comment keyword
 ### Env vars
 
 ```
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=        # Server-only, dùng cho admin writes + storage upload
+
+# Site
+NEXT_PUBLIC_SITE_URL=             # URL production, dùng để build cart link
+
+# SePay (thanh toán chuyển khoản)
+SEPAY_WEBHOOK_SECRET=             # Từ SePay dashboard → Webhooks → API Key (header: Authorization: Apikey <secret>)
+NEXT_PUBLIC_SEPAY_BANK_CODE=MB    # Mã ngân hàng (MB = MBBank)
+NEXT_PUBLIC_SEPAY_ACCOUNT=120926868  # Số tài khoản MBBank của công ty
+
+# GHTK (tính phí vận chuyển)
+GHTK_API_TOKEN=                   # Từ GHTK → Thông tin tài khoản → Cấu hình API → Token
+GHTK_PICK_PROVINCE=TP. Hồ Chí Minh
+GHTK_PICK_DISTRICT=Quận 12        # Quận kho hàng shop
+
+# Facebook Webhook
 FB_APP_SECRET=           # App → Settings → Basic → App Secret
 FB_VERIFY_TOKEN=         # Tự đặt, điền vào webhook setup trên Facebook
 FB_PAGE_ACCESS_TOKEN=    # Page Access Token (pages_messaging, pages_manage_metadata, pages_read_engagement)
-NEXT_PUBLIC_SITE_URL=    # URL production, dùng để build cart link
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=   # Server-only, dùng cho admin writes + storage upload
 ```
 
 ### Lưu ý
@@ -266,6 +322,58 @@ SUPABASE_SERVICE_ROLE_KEY=   # Server-only, dùng cho admin writes + storage upl
 - Route guard: `proxy.ts` redirect về login nếu chưa auth
 - Logout: `POST /api/admin/logout`
 - Trang chi tiết đơn: hiện danh sách `order_items` với tên, số lượng, đơn giá, thành tiền
+
+---
+
+## Thanh toán (Payment)
+
+### 2 phương thức
+
+| Phương thức | Luồng | Route |
+|-------------|-------|-------|
+| COD (tiền mặt) | Đặt → tạo đơn ngay, status=`moi` | `POST /api/orders` |
+| Chuyển khoản | Đặt → lưu tạm → QR → SePay webhook → tạo đơn | `POST /api/payments/pending` |
+
+### SePay Webhooks đã cấu hình
+
+| Tên | URL | Dùng cho |
+|-----|-----|---------|
+| Xác thực thanh toán web | `https://tanvyphat.com/api/webhook/sepay` | Production |
+| Xác thực thanh toán web dev | `https://chitinoid-funiculate-dakota.ngrok-free.dev/api/webhook/sepay` | Local dev (ngrok) |
+
+- Bảo mật: **API Key** — header `Authorization: Apikey {SEPAY_WEBHOOK_SECRET}`
+- `SEPAY_WEBHOOK_SECRET` = `4dc0b4f8-4e66-478e-9e3b-c2cf7deefac9`
+- Ngân hàng: **MBBank**, STK: **120926868** (CTY TNHH MTV SX TM TAN VY PHAT)
+
+### QR SePay
+
+```
+https://qr.sepay.vn/img?bank=MB&acc=120926868&template=compact&amount={amount}&des={transfer_content}
+```
+
+`transfer_content` = `TVP` + 8 ký tự hex đầu của `pending_payments.token` (uppercase, bỏ dấu `-`)
+
+---
+
+## Phí vận chuyển
+
+### Logic tính phí (`app/api/shipping/fee/route.ts`)
+
+1. **Freeship**: province_code=`79` (TP.HCM) + district trong `HCMC_DISTRICTS` + total ≥ 4,000,000đ → `{ fee: 0, freeship: true }`
+2. **GHTK API**: gọi `services.giaohangtietkiem.vn/services/shipment/fee` với token — lấy phí, không tạo đơn
+3. **Fallback**: nếu GHTK_API_TOKEN chưa có hoặc lỗi → `{ fee: 0, unavailable: true }` — UI hiện "Liên hệ shop"
+
+### Dữ liệu tỉnh/quận (`src/data/provinces.ts`)
+
+- 63 tỉnh/TP với province code (TP.HCM = `79`)
+- Quận/huyện cho các tỉnh phổ biến (TP.HCM đầy đủ 22 đơn vị)
+- `HCMC_DISTRICTS` — Set tên quận/huyện TP.HCM để check freeship
+
+### Checkout form (`app/thanh-toan/page.tsx`)
+
+- Dropdown **Tỉnh/TP** → Dropdown **Quận/Huyện** (cascade) → textarea địa chỉ chi tiết
+- Khi thay đổi địa chỉ → debounce gọi `/api/shipping/fee` → hiện phí (MIỄN PHÍ / giá / Liên hệ shop)
+- TỔNG = subtotal sản phẩm + phí ship
 
 ---
 

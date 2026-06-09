@@ -52,8 +52,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="vi" className={`${geistSans.variable} h-full`}>
-      <body className="min-h-full flex flex-col antialiased bg-[#f8fafc] text-[#1e293b]">
+    <html lang="vi" className={`${geistSans.variable} h-full`} suppressHydrationWarning>
+      <body className="min-h-full flex flex-col antialiased bg-[#f8fafc] text-[#1e293b]" suppressHydrationWarning>
         <NextTopLoader color="#1a56db" showSpinner={false} />
         <CartProvider>
           <Navbar />

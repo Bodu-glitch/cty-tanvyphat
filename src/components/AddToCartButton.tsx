@@ -30,7 +30,7 @@ export default function AddToCartButton({ product, fullWidth }: { product: Produ
   return (
     <button
       onClick={handleAdd}
-      className={`text-center text-xs font-medium py-1.5 px-3 rounded-lg transition-colors bg-green-500 hover:bg-green-600 text-white ${fullWidth ? 'w-full' : ''}`}
+      className={`text-center text-[10px] sm:text-xs font-medium py-1 sm:py-1.5 px-1 sm:px-3 rounded-lg transition-colors bg-green-500 hover:bg-green-600 text-white ${fullWidth ? 'w-full' : ''}`}
     >
       {added ? '✓ Đã thêm!' : 'Thêm vào giỏ'}
     </button>
