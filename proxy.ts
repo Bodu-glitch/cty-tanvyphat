@@ -25,8 +25,19 @@ export async function proxy(request: NextRequest) {
   const isAdminPath = pathname.startsWith('/admin')
   const isLoginPath = pathname === '/admin/dang-nhap'
 
+  // Chưa đăng nhập → vào trang admin (không phải login) → redirect về login
   if (isAdminPath && !isLoginPath && !user) {
     return NextResponse.redirect(new URL('/admin/dang-nhap', request.url))
+  }
+
+  // Đã đăng nhập → vào trang login → redirect về don-hang
+  if (isLoginPath && user) {
+    return NextResponse.redirect(new URL('/admin/don-hang', request.url))
+  }
+
+  // Đã đăng nhập → vào /admin root → redirect về don-hang
+  if (pathname === '/admin' && user) {
+    return NextResponse.redirect(new URL('/admin/don-hang', request.url))
   }
 
   return supabaseResponse
