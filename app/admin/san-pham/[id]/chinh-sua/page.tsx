@@ -14,16 +14,21 @@ export default async function ChinhSuaPage({
 
   const { id } = await params
 
-  const [categories, { data: product, error }] = await Promise.all([
+  const [categories, { data: rawProduct, error }] = await Promise.all([
     getCategories(),
     getAdminClient()
       .from('products')
-      .select('*')
+      .select('*, product_units(id, product_id, unit_name, price, stock, sort_order, created_at)')
       .eq('id', Number(id))
       .single(),
   ])
 
-  if (error || !product) notFound()
+  const product = rawProduct ? {
+    ...rawProduct,
+    product_units: ((rawProduct as any).product_units ?? []).sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order),
+  } : null
+
+  if (error || !rawProduct || !product) notFound()
 
   return <ProductFormClient categories={categories} product={product} />
 }

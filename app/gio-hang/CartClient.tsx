@@ -50,14 +50,15 @@ function CartPageContent({ categoryMap }: Props) {
       fetch(`/api/products/${addId}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((product) => {
-          if (product) {
+          if (product && product.firstUnit) {
             addItem({
               productId: product.id,
+              unitId: product.firstUnit.id,
               slug: product.slug,
               name: product.name,
               image: product.images?.[0] ?? null,
-              price: product.price,
-              unit: product.unit ?? null,
+              price: product.firstUnit.price,
+              unit: product.firstUnit.unit_name,
             })
           }
         })
@@ -159,7 +160,7 @@ function CartPageContent({ categoryMap }: Props) {
 
             <div className="divide-y divide-gray-100">
               {items.map((item: CartItem) => (
-                <div key={item.productId}>
+                <div key={item.cartKey}>
                   {/* Mobile card */}
                   <div className="flex gap-3 py-4 px-2 sm:hidden">
                     <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
@@ -180,7 +181,7 @@ function CartPageContent({ categoryMap }: Props) {
                           {item.name}
                         </Link>
                         <button
-                          onClick={() => removeItem(item.productId)}
+                          onClick={() => removeItem(item.cartKey)}
                           className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
                           aria-label="Xoá"
                         >
@@ -194,7 +195,7 @@ function CartPageContent({ categoryMap }: Props) {
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center border border-gray-300 rounded-full overflow-hidden">
                           <button
-                            onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                            onClick={() => updateQuantity(item.cartKey, item.quantity - 1)}
                             disabled={item.quantity <= 1}
                             className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors text-lg leading-none"
                           >
@@ -202,7 +203,7 @@ function CartPageContent({ categoryMap }: Props) {
                           </button>
                           <span className="w-10 text-center text-sm font-medium">{item.quantity}</span>
                           <button
-                            onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                            onClick={() => updateQuantity(item.cartKey, item.quantity + 1)}
                             className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors text-lg leading-none"
                           >
                             +
@@ -244,7 +245,7 @@ function CartPageContent({ categoryMap }: Props) {
                     <div className="flex items-center justify-center">
                       <div className="flex items-center border border-gray-300 rounded-full overflow-hidden">
                         <button
-                          onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.cartKey, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                           className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors text-lg leading-none"
                         >
@@ -252,7 +253,7 @@ function CartPageContent({ categoryMap }: Props) {
                         </button>
                         <span className="w-10 text-center text-sm font-medium">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.cartKey, item.quantity + 1)}
                           className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors text-lg leading-none"
                         >
                           +
@@ -272,7 +273,7 @@ function CartPageContent({ categoryMap }: Props) {
 
                     <div className="flex justify-center">
                       <button
-                        onClick={() => removeItem(item.productId)}
+                        onClick={() => removeItem(item.cartKey)}
                         className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
                         aria-label="Xoá"
                       >

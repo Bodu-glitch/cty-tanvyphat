@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { slug, name, category, description, images, price, stock, featured, fb_post_url, keyword, unit } = body
+  const { slug, name, category, description, images, featured, fb_post_url, keyword, units } = body
 
   if (!slug || !name || !category) {
     return NextResponse.json({ error: 'Thiếu thông tin bắt buộc (tên, slug, danh mục)' }, { status: 400 })
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Slug đã tồn tại, hãy chỉnh sửa tên hoặc slug' }, { status: 409 })
   }
 
-  const { data, error } = await db
+  const { data: product, error } = await db
     .from('products')
     .insert({
       slug,
@@ -34,16 +34,26 @@ export async function POST(req: NextRequest) {
       category,
       description: description || '',
       images: images || [],
-      price: price !== null && price !== '' ? Number(price) : null,
-      stock: Number(stock) || 0,
       featured: Boolean(featured),
       fb_post_url: fb_post_url || null,
       keyword: keyword || null,
-      unit: unit || null,
     })
-    .select()
+    .select('id')
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data, { status: 201 })
+  if (error || !product) return NextResponse.json({ error: error?.message }, { status: 500 })
+
+  // Thêm các đơn vị
+  if (Array.isArray(units) && units.length > 0) {
+    const unitRows = units.map((u: { unit_name: string; price?: string; stock?: string }, i: number) => ({
+      product_id: product.id,
+      unit_name: u.unit_name.trim(),
+      price: u.price !== '' && u.price != null ? Number(u.price) : null,
+      stock: Number(u.stock ?? 0) || 0,
+      sort_order: i,
+    }))
+    await db.from('product_units').insert(unitRows)
+  }
+
+  return NextResponse.json({ id: product.id }, { status: 201 })
 }

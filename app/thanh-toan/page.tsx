@@ -117,7 +117,7 @@ function CheckoutContent() {
             province: province?.name,
             district: district?.name,
             shipping_fee: shippingFee ?? 0,
-            items: items.map((i: CartItem) => ({ product_id: i.productId, quantity: i.quantity })),
+            items: items.map((i: CartItem) => ({ product_id: i.productId, unit_id: i.unitId, quantity: i.quantity })),
           }),
         })
         const data = await res.json()
@@ -143,7 +143,7 @@ function CheckoutContent() {
             province: province?.name,
             district: district?.name,
             shipping_fee: shippingFee ?? 0,
-            items: items.map((i: CartItem) => ({ product_id: i.productId, quantity: i.quantity })),
+            items: items.map((i: CartItem) => ({ product_id: i.productId, unit_id: i.unitId, quantity: i.quantity })),
           }),
         })
         const data = await res.json()

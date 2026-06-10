@@ -2,28 +2,34 @@
 
 import { useState } from 'react'
 import { useCart } from '../hooks/useCart'
+import type { ProductUnitRow } from '../lib/supabase/server'
 
 interface Product {
   id: number
   slug: string
   name: string
   images: string[]
-  price: number | null
-  unit?: string | null
 }
 
-export default function AddToCartButton({ product, fullWidth }: { product: Product; fullWidth?: boolean }) {
+interface Props {
+  product: Product
+  unit: ProductUnitRow
+  fullWidth?: boolean
+}
+
+export default function AddToCartButton({ product, unit, fullWidth }: Props) {
   const { addItem } = useCart()
   const [added, setAdded] = useState(false)
 
   function handleAdd() {
     addItem({
       productId: product.id,
+      unitId: unit.id,
       slug: product.slug,
       name: product.name,
       image: product.images?.[0] ?? null,
-      price: product.price,
-      unit: product.unit ?? null,
+      price: unit.price,
+      unit: unit.unit_name,
     })
     setAdded(true)
     setTimeout(() => setAdded(false), 1500)

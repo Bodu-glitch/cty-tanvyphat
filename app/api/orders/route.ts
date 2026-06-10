@@ -3,6 +3,7 @@ import { getAdminClient } from '@/src/lib/supabase/admin'
 
 interface OrderItem {
   product_id: number
+  unit_id: number
   quantity: number
 }
 
@@ -40,26 +41,30 @@ export async function POST(request: NextRequest) {
 
   const db = getAdminClient()
 
-  // Fetch product info for all items
-  const productIds = items.map((i) => i.product_id)
-  const { data: products } = await db
-    .from('products')
-    .select('id, name, price')
-    .in('id', productIds)
+  // Fetch thông tin sản phẩm và đơn vị
+  const productIds = [...new Set(items.map((i) => i.product_id))]
+  const unitIds = [...new Set(items.map((i) => i.unit_id))]
+
+  const [{ data: products }, { data: units }] = await Promise.all([
+    db.from('products').select('id, name').in('id', productIds),
+    db.from('product_units').select('id, product_id, unit_name, price').in('id', unitIds),
+  ])
 
   if (!products || products.length === 0) {
     return Response.json({ error: 'Không tìm thấy sản phẩm' }, { status: 404 })
   }
 
   const productMap = Object.fromEntries(products.map((p) => [p.id, p]))
+  const unitMap = Object.fromEntries((units ?? []).map((u) => [u.id, u]))
 
-  // Build order items with resolved product info
   const resolvedItems = items.map((item) => {
     const product = productMap[item.product_id]
+    const unit = unitMap[item.unit_id]
     return {
       product_id: item.product_id,
       product_name: product?.name ?? 'Sản phẩm không xác định',
-      product_price: product?.price ?? 0,
+      product_price: unit?.price ?? 0,
+      unit_name: unit?.unit_name ?? null,
       quantity: item.quantity,
     }
   })
@@ -71,7 +76,6 @@ export async function POST(request: NextRequest) {
   const shippingFeeNum = Number(shipping_fee ?? 0)
   const total_price = subtotal + shippingFeeNum
 
-  // Create order (COD only — bank_transfer goes through /api/payments/pending)
   const { data: order, error: orderError } = await db
     .from('orders')
     .insert({
@@ -95,7 +99,6 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'Không thể tạo đơn hàng' }, { status: 500 })
   }
 
-  // Insert order items
   const { error: itemsError } = await db.from('order_items').insert(
     resolvedItems.map((i) => ({ order_id: order.id, ...i }))
   )
@@ -105,7 +108,6 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'Không thể lưu sản phẩm đơn hàng' }, { status: 500 })
   }
 
-  // Save customer info for Facebook users (auto-fill next time)
   if (fb_user_id) {
     await db.from('fb_customers').upsert({
       fb_user_id,

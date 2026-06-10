@@ -14,7 +14,7 @@ export async function GET(
   const db = getAdminClient()
   const { data: product } = await db
     .from('products')
-    .select('id, slug, name, price, images, unit')
+    .select('id, slug, name, images, product_units(id, unit_name, price, stock, sort_order)')
     .eq('id', productId)
     .single()
 
@@ -22,5 +22,9 @@ export async function GET(
     return Response.json({ error: 'Not found' }, { status: 404 })
   }
 
-  return Response.json(product)
+  const units = (product.product_units as { id: number; unit_name: string; price: number | null; stock: number; sort_order: number }[] ?? [])
+    .sort((a, b) => a.sort_order - b.sort_order)
+  const firstUnit = units[0] ?? null
+
+  return Response.json({ ...product, firstUnit, product_units: units })
 }

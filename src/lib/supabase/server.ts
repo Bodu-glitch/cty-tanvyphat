@@ -2,6 +2,16 @@ import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+export type ProductUnitRow = {
+  id: number
+  product_id: number
+  unit_name: string
+  price: number | null
+  stock: number
+  sort_order: number
+  created_at: string
+}
+
 export type ProductRow = {
   id: number
   slug: string
@@ -12,11 +22,10 @@ export type ProductRow = {
   fb_post_url: string | null
   featured: boolean
   keyword: string | null
-  price: number | null
-  stock: number
-  unit: string | null
+  min_price: number | null
   created_at: string
   updated_at: string
+  product_units: ProductUnitRow[]
 }
 
 export type BranchRow = {
@@ -56,6 +65,11 @@ export type ProductFilterParams = {
   weights?: string[]
 }
 
+function normalizeProduct(row: ProductRow & { product_units?: ProductUnitRow[] }): ProductRow {
+  const units = (row.product_units ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
+  return { ...row, product_units: units }
+}
+
 function getClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -81,11 +95,11 @@ export async function createSSRClient() {
 export async function getProducts(): Promise<ProductRow[]> {
   const { data, error } = await getClient()
     .from('products')
-    .select('*')
+    .select('*, product_units(id, product_id, unit_name, price, stock, sort_order, created_at)')
     .order('featured', { ascending: false })
     .order('name')
   if (error) throw new Error(`getProducts: ${error.message}`)
-  return data ?? []
+  return (data ?? []).map(normalizeProduct)
 }
 
 export async function getBranches(): Promise<BranchRow[]> {
@@ -128,7 +142,7 @@ export async function getProductsFiltered(filter: ProductFilterParams = {}): Pro
   // Include categories to allow ordering by sort_order for giay-in branch
   let query = client
     .from('products')
-    .select('*, categories!products_category_fkey(sort_order)', { count: 'exact' })
+    .select('*, categories!products_category_fkey(sort_order), product_units(id, product_id, unit_name, price, stock, sort_order, created_at)', { count: 'exact' })
 
   if (search && search.trim()) {
     const term = search.trim()
@@ -159,7 +173,7 @@ export async function getProductsFiltered(filter: ProductFilterParams = {}): Pro
     query = query.order('name', { ascending: true })
   } else if (sortBy === 'price') {
     query = query
-      .order('price', { ascending: sortDir === 'asc', nullsFirst: false })
+      .order('min_price', { ascending: sortDir === 'asc', nullsFirst: false })
       .order('name', { ascending: true })
   } else {
     query = query
@@ -185,7 +199,7 @@ export async function getProductsFiltered(filter: ProductFilterParams = {}): Pro
     })
   }
 
-  return { data: result, count: count ?? 0 }
+  return { data: result.map(normalizeProduct), count: count ?? 0 }
 }
 
 export async function getProductCounts(): Promise<Record<string, number>> {
@@ -203,14 +217,14 @@ export async function getProductCounts(): Promise<Record<string, number>> {
 export async function getProductBySlug(slug: string): Promise<ProductRow | null> {
   const { data, error } = await getClient()
     .from('products')
-    .select('*')
+    .select('*, product_units(id, product_id, unit_name, price, stock, sort_order, created_at)')
     .eq('slug', slug)
     .single()
   if (error) {
     if (error.code === 'PGRST116') return null
     throw new Error(`getProductBySlug: ${error.message}`)
   }
-  return data
+  return normalizeProduct(data)
 }
 
 export async function getCategories(): Promise<CategoryRow[]> {
@@ -237,11 +251,11 @@ export async function getCategories(): Promise<CategoryRow[]> {
 export async function getProductsByCategory(categorySlug: string): Promise<ProductRow[]> {
   const { data, error } = await getClient()
     .from('products')
-    .select('*')
+    .select('*, product_units(id, product_id, unit_name, price, stock, sort_order, created_at)')
     .eq('category', categorySlug)
     .order('name')
   if (error) throw new Error(`getProductsByCategory: ${error.message}`)
-  return data ?? []
+  return (data ?? []).map(normalizeProduct)
 }
 
 export type NewsRow = {

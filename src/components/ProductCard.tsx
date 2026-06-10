@@ -21,11 +21,12 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, category }: ProductCardProps) {
   const hasImage = product.images.length > 0
-  const hasPrice = product.price != null
+  const firstUnit = product.product_units[0] ?? null
+  const hasPrice = firstUnit?.price != null
+  const multipleUnits = product.product_units.length > 1
 
   return (
     <div className="group flex flex-col bg-white rounded-lg sm:rounded-xl overflow-hidden shadow-sm border border-gray-100">
-      {/* Ảnh — chiếm 65% chiều cao card trên mobile */}
       <Link href={`/san-pham/${product.slug}`} className="block relative aspect-square overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
         {hasImage ? (
           <Image
@@ -50,22 +51,26 @@ export default function ProductCard({ product, category }: ProductCardProps) {
         )}
       </Link>
 
-      {/* Nội dung — gọn tối đa trên mobile */}
       <div className="px-1.5 pt-1 pb-1.5 sm:p-3 flex flex-col flex-1">
         <h3 className="font-semibold text-gray-900 text-[11px] sm:text-sm leading-snug mb-0.5 line-clamp-2 group-hover:text-[#1a56db] transition-colors">
           {product.name}
         </h3>
-        {/* Wrapper div handle việc ẩn — tránh line-clamp-2 ghi đè display:none */}
         <div className="hidden sm:block sm:flex-1 mb-2">
           <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
             {stripMarkdown(product.description)}
           </p>
         </div>
         <p className="text-red-600 font-bold text-[11px] sm:text-xs mb-1 sm:mb-3">
-          Giá: {hasPrice ? product.price!.toLocaleString('vi-VN') + 'đ' : <span className="text-red-600">Liên hệ</span>}
+          {hasPrice ? (
+            <>
+              {multipleUnits ? 'Từ ' : 'Giá: '}
+              {firstUnit!.price!.toLocaleString('vi-VN')}đ/{firstUnit!.unit_name}
+            </>
+          ) : (
+            <span className="text-red-600">Liên hệ</span>
+          )}
         </p>
 
-        {/* Actions */}
         <div className="flex gap-1 sm:gap-2 mt-auto">
           <Link
             href={`/san-pham/${product.slug}`}
@@ -73,10 +78,11 @@ export default function ProductCard({ product, category }: ProductCardProps) {
           >
             Chi tiết
           </Link>
-          {hasPrice ? (
+          {hasPrice && firstUnit ? (
             <div className="flex-1">
               <AddToCartButton
-                product={{ id: product.id, slug: product.slug, name: product.name, images: product.images, price: product.price, unit: product.unit }}
+                product={{ id: product.id, slug: product.slug, name: product.name, images: product.images }}
+                unit={firstUnit}
                 fullWidth
               />
             </div>

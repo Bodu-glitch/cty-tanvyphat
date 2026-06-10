@@ -32,7 +32,7 @@ export default async function AdminSanPhamPage({
   const db = getAdminClient()
   let query = db
     .from('products')
-    .select('id, slug, name, category, images, price, stock, unit, featured, updated_at', { count: 'exact' })
+    .select('id, slug, name, category, images, min_price, featured, updated_at, product_units(id, unit_name, price, stock, sort_order)', { count: 'exact' })
     .order('updated_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
@@ -44,17 +44,20 @@ export default async function AdminSanPhamPage({
   }
 
   const { data, count } = await query
-  const products = (data ?? []) as Array<{
+  const products = (data ?? []).map(p => ({
+    ...p,
+    product_units: ((p as any).product_units as Array<{ id: number; unit_name: string; price: number | null; stock: number; sort_order: number }> ?? [])
+      .sort((a, b) => a.sort_order - b.sort_order),
+  })) as Array<{
     id: number
     slug: string
     name: string
     category: string
     images: string[]
-    price: number | null
-    stock: number
-    unit: string | null
+    min_price: number | null
     featured: boolean
     updated_at: string
+    product_units: Array<{ id: number; unit_name: string; price: number | null; stock: number; sort_order: number }>
   }>
   const totalPages = Math.ceil((count ?? 0) / limit)
 
@@ -140,9 +143,7 @@ export default async function AdminSanPhamPage({
                   <tr>
                     <th className="text-left px-4 py-3 text-gray-500 font-medium">Sản phẩm</th>
                     <th className="text-left px-4 py-3 text-gray-500 font-medium">Danh mục</th>
-                    <th className="text-left px-4 py-3 text-gray-500 font-medium">Giá</th>
-                    <th className="text-left px-4 py-3 text-gray-500 font-medium">Đơn vị</th>
-                    <th className="text-left px-4 py-3 text-gray-500 font-medium">Kho</th>
+                    <th className="text-left px-4 py-3 text-gray-500 font-medium">Đơn vị & Giá</th>
                     <th className="text-center px-4 py-3 text-gray-500 font-medium">Nổi bật</th>
                     <th className="text-right px-4 py-3 text-gray-500 font-medium">Thao tác</th>
                   </tr>
@@ -181,16 +182,24 @@ export default async function AdminSanPhamPage({
                             <span className="text-gray-400 text-xs">{product.category}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          {product.price != null
-                            ? <span className="text-gray-800">{Number(product.price).toLocaleString('vi-VN')}đ</span>
-                            : <span className="text-gray-400 text-xs">Liên hệ</span>
-                          }
+                        <td className="px-4 py-3">
+                          {product.product_units.length === 0 ? (
+                            <span className="text-gray-300 text-xs">—</span>
+                          ) : (
+                            <div className="space-y-0.5">
+                              {product.product_units.map(u => (
+                                <div key={u.id} className="text-xs text-gray-700">
+                                  <span className="font-medium">{u.unit_name}</span>
+                                  {u.price != null
+                                    ? <span className="text-gray-500 ml-1">{Number(u.price).toLocaleString('vi-VN')}đ</span>
+                                    : <span className="text-gray-400 ml-1">Liên hệ</span>
+                                  }
+                                  <span className="text-gray-400 ml-1">· kho: {u.stock}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </td>
-                        <td className="px-4 py-3 text-gray-600 text-xs">
-                          {product.unit ?? <span className="text-gray-300">—</span>}
-                        </td>
-                        <td className="px-4 py-3 text-gray-700">{product.stock}</td>
                         <td className="px-4 py-3 text-center">
                           {product.featured && <span className="text-yellow-500">★</span>}
                         </td>

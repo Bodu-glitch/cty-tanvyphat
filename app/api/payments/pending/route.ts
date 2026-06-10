@@ -10,7 +10,7 @@ interface PendingPaymentBody {
   province?: string
   district?: string
   shipping_fee: number
-  items: { product_id: number; quantity: number }[]
+  items: { product_id: number; unit_id: number; quantity: number }[]
 }
 
 export async function POST(request: NextRequest) {
@@ -35,25 +35,24 @@ export async function POST(request: NextRequest) {
 
   const db = getAdminClient()
 
-  // Tính tổng tiền từ sản phẩm
-  const productIds = items.map(i => i.product_id)
-  const { data: products } = await db
-    .from('products')
+  // Tính tổng tiền từ product_units
+  const unitIds = [...new Set(items.map(i => i.unit_id))]
+  const { data: units } = await db
+    .from('product_units')
     .select('id, price')
-    .in('id', productIds)
+    .in('id', unitIds)
 
-  if (!products || products.length === 0) {
-    return Response.json({ error: 'Không tìm thấy sản phẩm' }, { status: 404 })
+  if (!units || units.length === 0) {
+    return Response.json({ error: 'Không tìm thấy thông tin đơn vị sản phẩm' }, { status: 404 })
   }
 
-  const productMap = Object.fromEntries(products.map(p => [p.id, p]))
+  const unitMap = Object.fromEntries(units.map(u => [u.id, u]))
   const subtotal = items.reduce((sum, item) => {
-    const price = Number(productMap[item.product_id]?.price ?? 0)
+    const price = Number(unitMap[item.unit_id]?.price ?? 0)
     return sum + price * item.quantity
   }, 0)
   const amount = subtotal + (shipping_fee ?? 0)
 
-  // Lưu vào pending_payments
   const { data: pending, error } = await db
     .from('pending_payments')
     .insert({
@@ -76,7 +75,6 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'Không thể tạo phiên thanh toán' }, { status: 500 })
   }
 
-  // Nội dung chuyển khoản: TVP- + 8 ký tự đầu token (không có dấu gạch)
   const tokenStr = pending.token as string
   const transferContent = 'TVP' + tokenStr.replace(/-/g, '').substring(0, 8).toUpperCase()
 

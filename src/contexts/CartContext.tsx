@@ -3,7 +3,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 
 export interface CartItem {
+  cartKey: string    // `${productId}-${unitId}` — unique identifier
   productId: number
+  unitId: number
   slug: string
   name: string
   image: string | null
@@ -17,9 +19,9 @@ interface CartContextValue {
   totalItems: number
   totalPrice: number
   hydrated: boolean
-  addItem: (product: Omit<CartItem, 'quantity'>) => void
-  removeItem: (productId: number) => void
-  updateQuantity: (productId: number, quantity: number) => void
+  addItem: (product: Omit<CartItem, 'quantity' | 'cartKey'>) => void
+  removeItem: (cartKey: string) => void
+  updateQuantity: (cartKey: string, quantity: number) => void
   clearCart: () => void
 }
 
@@ -28,7 +30,11 @@ const CART_KEY = 'tvp_cart'
 function readStorage(): CartItem[] {
   try {
     const raw = localStorage.getItem(CART_KEY)
-    return raw ? JSON.parse(raw) : []
+    if (!raw) return []
+    const parsed: CartItem[] = JSON.parse(raw)
+    // Bỏ qua dữ liệu cũ chưa có unitId
+    if (parsed.some(i => i.unitId == null)) return []
+    return parsed
   } catch {
     return []
   }
@@ -44,42 +50,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [hydrated, setHydrated] = useState(false)
 
-  // Hydrate from localStorage once on mount
   useEffect(() => {
     setItems(readStorage())
     setHydrated(true)
   }, [])
 
-  const persist = useCallback((next: CartItem[]) => {
-    writeStorage(next)
-    setItems(next)
-  }, [])
-
-  const addItem = useCallback((product: Omit<CartItem, 'quantity'>) => {
+  const addItem = useCallback((product: Omit<CartItem, 'quantity' | 'cartKey'>) => {
+    const cartKey = `${product.productId}-${product.unitId}`
     setItems((prev) => {
-      const existing = prev.find((i) => i.productId === product.productId)
+      const existing = prev.find((i) => i.cartKey === cartKey)
       const next = existing
         ? prev.map((i) =>
-            i.productId === product.productId ? { ...i, quantity: i.quantity + 1 } : i
+            i.cartKey === cartKey ? { ...i, quantity: i.quantity + 1 } : i
           )
-        : [...prev, { ...product, quantity: 1 }]
+        : [...prev, { ...product, cartKey, quantity: 1 }]
       writeStorage(next)
       return next
     })
   }, [])
 
-  const removeItem = useCallback((productId: number) => {
+  const removeItem = useCallback((cartKey: string) => {
     setItems((prev) => {
-      const next = prev.filter((i) => i.productId !== productId)
+      const next = prev.filter((i) => i.cartKey !== cartKey)
       writeStorage(next)
       return next
     })
   }, [])
 
-  const updateQuantity = useCallback((productId: number, quantity: number) => {
+  const updateQuantity = useCallback((cartKey: string, quantity: number) => {
     if (quantity < 1) return
     setItems((prev) => {
-      const next = prev.map((i) => (i.productId === productId ? { ...i, quantity } : i))
+      const next = prev.map((i) => (i.cartKey === cartKey ? { ...i, quantity } : i))
       writeStorage(next)
       return next
     })

@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { CategoryRow, ProductRow } from '@/src/lib/supabase/server'
+import type { CategoryRow, ProductRow, ProductUnitRow } from '@/src/lib/supabase/server'
 
 const BRANCH_NAMES: Record<string, string> = {
   'giay-in': 'Giấy In',
@@ -23,9 +23,26 @@ function toSlug(text: string): string {
     .replace(/-+/g, '-')
 }
 
+interface UnitField {
+  unit_name: string
+  price: string
+  stock: string
+}
+
 type Props = {
   categories: CategoryRow[]
   product?: ProductRow
+}
+
+function defaultUnits(product?: ProductRow): UnitField[] {
+  if (!product || product.product_units.length === 0) {
+    return [{ unit_name: 'Hộp', price: '', stock: '0' }]
+  }
+  return product.product_units.map((u: ProductUnitRow) => ({
+    unit_name: u.unit_name,
+    price: u.price != null ? String(u.price) : '',
+    stock: String(u.stock),
+  }))
 }
 
 export default function ProductFormClient({ categories, product }: Props) {
@@ -39,12 +56,10 @@ export default function ProductFormClient({ categories, product }: Props) {
   const [category, setCategory] = useState(product?.category ?? '')
   const [description, setDescription] = useState(product?.description ?? '')
   const [images, setImages] = useState<string[]>(product?.images ?? [])
-  const [price, setPrice] = useState(product?.price != null ? String(product.price) : '')
-  const [stock, setStock] = useState(String(product?.stock ?? 0))
+  const [units, setUnits] = useState<UnitField[]>(defaultUnits(product))
   const [featured, setFeatured] = useState(product?.featured ?? false)
   const [fbPostUrl, setFbPostUrl] = useState(product?.fb_post_url ?? '')
   const [keyword, setKeyword] = useState(product?.keyword ?? '')
-  const [unit, setUnit] = useState(product?.unit ?? '')
   const [submitting, setSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -87,10 +102,30 @@ export default function ProductFormClient({ categories, product }: Props) {
     })
   }
 
+  function addUnit() {
+    setUnits(prev => [...prev, { unit_name: '', price: '', stock: '0' }])
+  }
+
+  function removeUnit(index: number) {
+    setUnits(prev => prev.filter((_, i) => i !== index))
+  }
+
+  function updateUnit(index: number, field: keyof UnitField, value: string) {
+    setUnits(prev => prev.map((u, i) => i === index ? { ...u, [field]: value } : u))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim() || !slug.trim() || !category) {
       setError('Vui lòng điền tên sản phẩm, slug và chọn danh mục')
+      return
+    }
+    if (units.length === 0) {
+      setError('Sản phẩm phải có ít nhất một đơn vị')
+      return
+    }
+    if (units.some(u => !u.unit_name.trim())) {
+      setError('Tên đơn vị không được để trống')
       return
     }
     setSubmitting(true)
@@ -102,12 +137,14 @@ export default function ProductFormClient({ categories, product }: Props) {
       category,
       description: description.trim(),
       images,
-      price: price !== '' ? Number(price) : null,
-      stock: Number(stock) || 0,
       featured,
       fb_post_url: fbPostUrl.trim() || null,
       keyword: keyword.trim() || null,
-      unit: unit.trim() || null,
+      units: units.map(u => ({
+        unit_name: u.unit_name.trim(),
+        price: u.price.trim() || null,
+        stock: u.stock || '0',
+      })),
     }
 
     const url = isEdit ? `/api/admin/products/${product.id}` : '/api/admin/products'
@@ -295,43 +332,75 @@ export default function ProductFormClient({ categories, product }: Props) {
           <p className="text-xs text-gray-400">Có thể chọn nhiều ảnh cùng lúc. Dùng nút ‹ › để đổi thứ tự.</p>
         </div>
 
-        {/* Giá & Kho */}
+        {/* Đơn vị & Giá */}
         <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700">Giá & Kho hàng</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Giá (đ)</label>
-              <input
-                type="number"
-                value={price}
-                onChange={e => setPrice(e.target.value)}
-                placeholder="Để trống = Liên hệ"
-                min="0"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-400 mt-1">Để trống → nút &quot;Đặt hàng&quot; (gọi điện)</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tồn kho</label>
-              <input
-                type="number"
-                value={stock}
-                onChange={e => setStock(e.target.value)}
-                min="0"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700">Đơn vị & Giá bán</h2>
+            <button
+              type="button"
+              onClick={addUnit}
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium px-3 py-1 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors"
+            >
+              + Thêm đơn vị
+            </button>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Đơn vị bán</label>
-            <input
-              type="text"
-              value={unit}
-              onChange={e => setUnit(e.target.value)}
-              placeholder="Ví dụ: hộp, ream, thùng, cái..."
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+
+          <p className="text-xs text-gray-400">Mỗi đơn vị có giá riêng. Ví dụ: Hộp 25.000đ, Thùng 250.000đ. Để trống giá → nút &quot;Liên hệ&quot;.</p>
+
+          {units.length === 0 && (
+            <p className="text-sm text-gray-400 italic">Chưa có đơn vị nào. Nhấn &quot;+ Thêm đơn vị&quot; để thêm.</p>
+          )}
+
+          <div className="space-y-3">
+            {units.map((unit, i) => (
+              <div key={i} className="flex items-start gap-2 p-3 bg-gray-50 rounded-xl">
+                <div className="flex-1 grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Tên đơn vị *</label>
+                    <input
+                      type="text"
+                      value={unit.unit_name}
+                      onChange={e => updateUnit(i, 'unit_name', e.target.value)}
+                      placeholder="hộp, thùng, cái..."
+                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Giá (đ)</label>
+                    <input
+                      type="number"
+                      value={unit.price}
+                      onChange={e => updateUnit(i, 'price', e.target.value)}
+                      placeholder="Để trống = Liên hệ"
+                      min="0"
+                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Tồn kho</label>
+                    <input
+                      type="number"
+                      value={unit.stock}
+                      onChange={e => updateUnit(i, 'stock', e.target.value)}
+                      min="0"
+                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+                </div>
+                {units.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeUnit(i)}
+                    className="mt-5 w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                    title="Xóa đơn vị này"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
+
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
