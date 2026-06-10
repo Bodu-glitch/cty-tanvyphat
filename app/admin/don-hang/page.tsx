@@ -55,6 +55,9 @@ export default async function AdminOrdersPage({
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h1 className="font-bold text-gray-900">📦 Quản lý đơn hàng</h1>
+            <Link href="/admin/san-pham" className="text-sm text-gray-500 hover:text-gray-700">
+              Sản phẩm
+            </Link>
             <Link href="/admin/tin-tuc" className="text-sm text-gray-500 hover:text-gray-700">
               Tin tức
             </Link>

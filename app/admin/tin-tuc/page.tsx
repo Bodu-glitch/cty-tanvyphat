@@ -29,6 +29,9 @@ export default async function AdminTinTucPage() {
             <Link href="/admin/don-hang" className="text-sm text-gray-500 hover:text-gray-700">
               Đơn hàng
             </Link>
+            <Link href="/admin/san-pham" className="text-sm text-gray-500 hover:text-gray-700">
+              Sản phẩm
+            </Link>
           </div>
           <div className="flex items-center gap-3">
             <Link
