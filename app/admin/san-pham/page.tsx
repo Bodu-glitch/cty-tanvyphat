@@ -32,7 +32,7 @@ export default async function AdminSanPhamPage({
   const db = getAdminClient()
   let query = db
     .from('products')
-    .select('id, slug, name, category, images, price, stock, featured, updated_at', { count: 'exact' })
+    .select('id, slug, name, category, images, price, stock, unit, featured, updated_at', { count: 'exact' })
     .order('updated_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
@@ -52,6 +52,7 @@ export default async function AdminSanPhamPage({
     images: string[]
     price: number | null
     stock: number
+    unit: string | null
     featured: boolean
     updated_at: string
   }>
@@ -140,6 +141,7 @@ export default async function AdminSanPhamPage({
                     <th className="text-left px-4 py-3 text-gray-500 font-medium">Sản phẩm</th>
                     <th className="text-left px-4 py-3 text-gray-500 font-medium">Danh mục</th>
                     <th className="text-left px-4 py-3 text-gray-500 font-medium">Giá</th>
+                    <th className="text-left px-4 py-3 text-gray-500 font-medium">Đơn vị</th>
                     <th className="text-left px-4 py-3 text-gray-500 font-medium">Kho</th>
                     <th className="text-center px-4 py-3 text-gray-500 font-medium">Nổi bật</th>
                     <th className="text-right px-4 py-3 text-gray-500 font-medium">Thao tác</th>
@@ -184,6 +186,9 @@ export default async function AdminSanPhamPage({
                             ? <span className="text-gray-800">{Number(product.price).toLocaleString('vi-VN')}đ</span>
                             : <span className="text-gray-400 text-xs">Liên hệ</span>
                           }
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">
+                          {product.unit ?? <span className="text-gray-300">—</span>}
                         </td>
                         <td className="px-4 py-3 text-gray-700">{product.stock}</td>
                         <td className="px-4 py-3 text-center">

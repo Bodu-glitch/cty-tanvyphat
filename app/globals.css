@@ -92,6 +92,28 @@ html {
   pointer-events: none;
 }
 
+/* Cart table grid — 6 columns: product | price | qty | unit | total | delete */
+.cart-grid-header {
+  display: none;
+}
+.cart-grid-row {
+  display: none;
+}
+@media (min-width: 640px) {
+  .cart-grid-header {
+    display: grid;
+    grid-template-columns: 2fr 100px 140px 60px 100px 36px;
+    gap: 1rem;
+    align-items: center;
+  }
+  .cart-grid-row {
+    display: grid;
+    grid-template-columns: 2fr 100px 140px 60px 100px 36px;
+    gap: 1rem;
+    align-items: center;
+  }
+}
+
 /* Prose content (public news detail + editor preview) */
 .news-content h1 { font-size: 1.5rem; font-weight: 700; margin: 1.25rem 0 0.5rem; color: #1a3a6b; scroll-margin-top: 5rem; }
 .news-content h2 { font-size: 1.25rem; font-weight: 700; margin: 1.25rem 0 0.5rem; color: #1a3a6b; scroll-margin-top: 5rem; }

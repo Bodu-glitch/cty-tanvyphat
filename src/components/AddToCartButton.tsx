@@ -9,6 +9,7 @@ interface Product {
   name: string
   images: string[]
   price: number | null
+  unit?: string | null
 }
 
 export default function AddToCartButton({ product, fullWidth }: { product: Product; fullWidth?: boolean }) {
@@ -22,6 +23,7 @@ export default function AddToCartButton({ product, fullWidth }: { product: Produ
       name: product.name,
       image: product.images?.[0] ?? null,
       price: product.price,
+      unit: product.unit ?? null,
     })
     setAdded(true)
     setTimeout(() => setAdded(false), 1500)

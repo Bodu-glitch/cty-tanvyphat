@@ -471,13 +471,22 @@ function CheckoutContent() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 line-clamp-2 text-xs">{item.name}</p>
-                      <p className="text-gray-500 text-xs">x{item.quantity}</p>
+                      <p className="text-gray-500 text-xs">
+                        x{item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                      </p>
                     </div>
-                    <p className="text-gray-900 font-semibold text-xs whitespace-nowrap">
-                      {item.price
-                        ? (item.price * item.quantity).toLocaleString('vi-VN') + 'đ'
-                        : 'Liên hệ'}
-                    </p>
+                    <div className="text-right whitespace-nowrap">
+                      {item.price && item.quantity > 1 && (
+                        <p className="text-gray-400 text-[10px]">
+                          {item.price.toLocaleString('vi-VN')}đ × {item.quantity}
+                        </p>
+                      )}
+                      <p className="text-gray-900 font-semibold text-xs">
+                        {item.price
+                          ? (item.price * item.quantity).toLocaleString('vi-VN') + 'đ'
+                          : 'Liên hệ'}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>

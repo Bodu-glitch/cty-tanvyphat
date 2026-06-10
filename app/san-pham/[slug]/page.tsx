@@ -167,13 +167,16 @@ export default async function ProductDetailPage({ params }: PageProps) {
                       ? product.price.toLocaleString('vi-VN') + 'đ'
                       : 'Liên hệ để được báo giá sỉ tốt nhất'}
                   </p>
+                  {product.unit && (
+                    <p className="text-amber-600 text-sm mt-1">Đơn vị: <span className="font-medium">{product.unit}</span></p>
+                  )}
                 </div>
 
                 <div className="flex-1" />
 
                 <div className="flex flex-col gap-3">
                   {product.price != null ? (
-                    <AddToCartButton product={{ id: product.id, slug: product.slug, name: product.name, images: product.images, price: product.price }} />
+                    <AddToCartButton product={{ id: product.id, slug: product.slug, name: product.name, images: product.images, price: product.price, unit: product.unit }} />
                   ) : (
                     <a
                       href={`tel:${store.phone}`}

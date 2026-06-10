@@ -14,7 +14,7 @@ export async function GET(
   const db = getAdminClient()
   const { data: product } = await db
     .from('products')
-    .select('id, slug, name, price, images')
+    .select('id, slug, name, price, images, unit')
     .eq('id', productId)
     .single()
 

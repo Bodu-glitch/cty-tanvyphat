@@ -76,7 +76,7 @@ export default function ProductCard({ product, category }: ProductCardProps) {
           {hasPrice ? (
             <div className="flex-1">
               <AddToCartButton
-                product={{ id: product.id, slug: product.slug, name: product.name, images: product.images, price: product.price }}
+                product={{ id: product.id, slug: product.slug, name: product.name, images: product.images, price: product.price, unit: product.unit }}
                 fullWidth
               />
             </div>

@@ -44,6 +44,7 @@ export default function ProductFormClient({ categories, product }: Props) {
   const [featured, setFeatured] = useState(product?.featured ?? false)
   const [fbPostUrl, setFbPostUrl] = useState(product?.fb_post_url ?? '')
   const [keyword, setKeyword] = useState(product?.keyword ?? '')
+  const [unit, setUnit] = useState(product?.unit ?? '')
   const [submitting, setSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -106,6 +107,7 @@ export default function ProductFormClient({ categories, product }: Props) {
       featured,
       fb_post_url: fbPostUrl.trim() || null,
       keyword: keyword.trim() || null,
+      unit: unit.trim() || null,
     }
 
     const url = isEdit ? `/api/admin/products/${product.id}` : '/api/admin/products'
@@ -319,6 +321,16 @@ export default function ProductFormClient({ categories, product }: Props) {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Đơn vị bán</label>
+            <input
+              type="text"
+              value={unit}
+              onChange={e => setUnit(e.target.value)}
+              placeholder="Ví dụ: hộp, ream, thùng, cái..."
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
           <label className="flex items-center gap-3 cursor-pointer">
             <input

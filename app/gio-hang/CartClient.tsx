@@ -57,6 +57,7 @@ function CartPageContent({ categoryMap }: Props) {
               name: product.name,
               image: product.images?.[0] ?? null,
               price: product.price,
+              unit: product.unit ?? null,
             })
           }
         })
@@ -144,25 +145,24 @@ function CartPageContent({ categoryMap }: Props) {
       <div className="max-w-6xl mx-auto">
         <h1 className="text-2xl font-bold text-gray-900 mb-8">GIỎ HÀNG CỦA BẠN</h1>
 
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
+        <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
           {/* LEFT: Cart table */}
           <div className="flex-1 min-w-0">
-            <div className="hidden sm:grid grid-cols-[2fr_100px_140px_100px_36px] gap-4 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200 pb-3 mb-2 px-2">
+            <div className="cart-grid-header text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200 pb-3 mb-2 px-2">
               <span>Sản phẩm</span>
               <span className="text-right">Giá</span>
               <span className="text-center">Số lượng</span>
+              <span className="text-center">Đơn vị</span>
               <span className="text-right">Tổng</span>
               <span />
             </div>
 
             <div className="divide-y divide-gray-100">
               {items.map((item: CartItem) => (
-                <div
-                  key={item.productId}
-                  className="grid grid-cols-[auto_1fr] sm:grid-cols-[2fr_100px_140px_100px_36px] gap-4 items-center py-5 px-2"
-                >
-                  <div className="col-span-2 sm:col-span-1 flex items-center gap-4">
-                    <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
+                <div key={item.productId}>
+                  {/* Mobile card */}
+                  <div className="flex gap-3 py-4 px-2 sm:hidden">
+                    <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
                       {item.image ? (
                         <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                       ) : (
@@ -171,51 +171,114 @@ function CartPageContent({ categoryMap }: Props) {
                         </div>
                       )}
                     </div>
-                    <Link
-                      href={`/san-pham/${item.slug}`}
-                      className="text-sm font-medium text-gray-900 hover:text-blue-600 line-clamp-2 transition-colors"
-                    >
-                      {item.name}
-                    </Link>
-                  </div>
-
-                  <div className="hidden sm:block text-right text-sm text-gray-700">
-                    {item.price ? item.price.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'}
-                  </div>
-
-                  <div className="flex items-center justify-center">
-                    <div className="flex items-center border border-gray-300 rounded-full overflow-hidden">
-                      <button
-                        onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                        disabled={item.quantity <= 1}
-                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors text-lg leading-none"
-                      >
-                        −
-                      </button>
-                      <span className="w-10 text-center text-sm font-medium">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors text-lg leading-none"
-                      >
-                        +
-                      </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <Link
+                          href={`/san-pham/${item.slug}`}
+                          className="text-sm font-medium text-gray-900 hover:text-blue-600 line-clamp-2 transition-colors"
+                        >
+                          {item.name}
+                        </Link>
+                        <button
+                          onClick={() => removeItem(item.productId)}
+                          className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
+                          aria-label="Xoá"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {item.price ? item.price.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'}
+                        {item.unit ? `/${item.unit}` : ''}
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center border border-gray-300 rounded-full overflow-hidden">
+                          <button
+                            onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                            disabled={item.quantity <= 1}
+                            className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors text-lg leading-none"
+                          >
+                            −
+                          </button>
+                          <span className="w-10 text-center text-sm font-medium">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                            className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors text-lg leading-none"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {item.price
+                            ? (item.price * item.quantity).toLocaleString('vi-VN') + 'đ'
+                            : 'Liên hệ'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="hidden sm:block text-right text-sm font-semibold text-gray-900">
-                    {item.price
-                      ? (item.price * item.quantity).toLocaleString('vi-VN') + 'đ'
-                      : 'Liên hệ'}
-                  </div>
+                  {/* Desktop table row */}
+                  <div className="cart-grid-row py-5 px-2">
+                    <div className="flex items-center gap-4">
+                      <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-2xl">📦</span>
+                          </div>
+                        )}
+                      </div>
+                      <Link
+                        href={`/san-pham/${item.slug}`}
+                        className="text-sm font-medium text-gray-900 hover:text-blue-600 line-clamp-2 transition-colors"
+                      >
+                        {item.name}
+                      </Link>
+                    </div>
 
-                  <div className="flex justify-end sm:justify-center">
-                    <button
-                      onClick={() => removeItem(item.productId)}
-                      className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
-                      aria-label="Xoá"
-                    >
-                      ✕
-                    </button>
+                    <div className="text-right text-sm text-gray-700">
+                      {item.price ? item.price.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'}
+                    </div>
+
+                    <div className="flex items-center justify-center">
+                      <div className="flex items-center border border-gray-300 rounded-full overflow-hidden">
+                        <button
+                          onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                          disabled={item.quantity <= 1}
+                          className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors text-lg leading-none"
+                        >
+                          −
+                        </button>
+                        <span className="w-10 text-center text-sm font-medium">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                          className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors text-lg leading-none"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="text-center text-sm text-gray-500">
+                      {item.unit ?? '—'}
+                    </div>
+
+                    <div className="text-right text-sm font-semibold text-gray-900">
+                      {item.price
+                        ? (item.price * item.quantity).toLocaleString('vi-VN') + 'đ'
+                        : 'Liên hệ'}
+                    </div>
+
+                    <div className="flex justify-center">
+                      <button
+                        onClick={() => removeItem(item.productId)}
+                        className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
+                        aria-label="Xoá"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

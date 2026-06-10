@@ -14,6 +14,7 @@ export type ProductRow = {
   keyword: string | null
   price: number | null
   stock: number
+  unit: string | null
   created_at: string
   updated_at: string
 }
