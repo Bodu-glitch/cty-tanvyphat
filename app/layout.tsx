@@ -39,6 +39,9 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'CT Tân Vy Phát',
   },
+  verification: {
+    google: 'google8327f2021776fbf0',
+  },
   robots: { index: true, follow: true },
   icons: {
     icon: '/logo.png',
