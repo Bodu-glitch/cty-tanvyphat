@@ -62,15 +62,23 @@ async function processWebhookEvent(body: Record<string, unknown>) {
         }
       }
 
-      // Handle messaging events (postbacks)
+      // Handle messaging events (direct messages & postbacks)
       const messaging = (entry.messaging as Array<Record<string, unknown>>) ?? []
       for (const event of messaging) {
+        const sender = event.sender as Record<string, unknown>
+        const psid = sender.id as string
+
         const postback = event.postback as Record<string, unknown> | undefined
         if (postback?.payload && typeof postback.payload === 'string') {
           if (postback.payload.startsWith('ADD_TO_CART:')) {
-            const sender = event.sender as Record<string, unknown>
-            await handlePostbackEvent(pageId, sender.id as string, postback.payload)
+            await handlePostbackEvent(pageId, psid, postback.payload)
           }
+          continue
+        }
+
+        const message = event.message as Record<string, unknown> | undefined
+        if (message && !message.is_echo) {
+          await handleDirectMessageEvent(pageId, psid, message)
         }
       }
     }
@@ -113,6 +121,27 @@ async function handleCommentEvent(pageId: string, value: Record<string, unknown>
   // Fallback to direct message when private replies are unavailable for this comment object.
   if (!commenterId) return
   await sendMessage(pageId, commenterId, replyPayload)
+}
+
+async function handleDirectMessageEvent(
+  pageId: string,
+  psid: string,
+  message: Record<string, unknown>
+) {
+  const text = ((message.text as string) ?? '').trim().toUpperCase()
+  if (!text) return
+
+  const db = getAdminClient()
+  const { data: product } = await db
+    .from('products')
+    .select('id, name, price, stock')
+    .eq('keyword', text)
+    .gt('stock', 0)
+    .single()
+
+  if (!product) return
+
+  await sendMessage(pageId, psid, buildCartLinkMessage(product, psid))
 }
 
 async function handlePostbackEvent(pageId: string, psid: string, payload: string) {
