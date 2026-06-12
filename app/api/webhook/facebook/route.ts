@@ -78,6 +78,7 @@ async function processWebhookEvent(body: Record<string, unknown>) {
 
         const message = event.message as Record<string, unknown> | undefined
         if (message && !message.is_echo) {
+          console.log('[webhook] direct message:', JSON.stringify({ pageId, psid, message }))
           await handleDirectMessageEvent(pageId, psid, message)
         }
       }
@@ -99,9 +100,8 @@ async function handleCommentEvent(pageId: string, value: Record<string, unknown>
   const db = getAdminClient()
   const { data: product } = await db
     .from('products')
-    .select('id, name, price, stock')
-    .eq('keyword', commentText)
-    .gt('stock', 0)
+    .select('id, name, min_price')
+    .ilike('keyword', commentText)
     .single()
 
   if (!product) return
@@ -129,16 +129,17 @@ async function handleDirectMessageEvent(
   message: Record<string, unknown>
 ) {
   const text = ((message.text as string) ?? '').trim().toUpperCase()
+  console.log('[webhook] handleDirectMessage text:', text)
   if (!text) return
 
   const db = getAdminClient()
-  const { data: product } = await db
+  const { data: product, error } = await db
     .from('products')
-    .select('id, name, price, stock')
-    .eq('keyword', text)
-    .gt('stock', 0)
+    .select('id, name, min_price')
+    .ilike('keyword', text)
     .single()
 
+  console.log('[webhook] product lookup:', { text, product, error })
   if (!product) return
 
   await sendMessage(pageId, psid, buildCartLinkMessage(product, psid))
@@ -151,18 +152,11 @@ async function handlePostbackEvent(pageId: string, psid: string, payload: string
   const db = getAdminClient()
   const { data: product } = await db
     .from('products')
-    .select('id, name, price, stock')
+    .select('id, name, min_price')
     .eq('id', productId)
     .single()
 
   if (!product) return
-
-  if (product.stock <= 0) {
-    await sendMessage(pageId, psid, {
-      message: { text: 'Rất tiếc, sản phẩm này đã hết hàng. Vui lòng liên hệ shop để được hỗ trợ.' },
-    })
-    return
-  }
 
   await sendMessage(pageId, psid, buildCartLinkMessage(product, psid))
 }

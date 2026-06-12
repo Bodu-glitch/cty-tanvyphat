@@ -95,17 +95,16 @@ function buildPrivateReplyCommentIdCandidates(commentId: string, postId?: string
 export function buildProductReplyMessage(product: {
   id: number
   name: string
-  price: number | null
-  stock: number
+  min_price: number | null
 }) {
-  const price = product.price ? product.price.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'
+  const price = product.min_price ? product.min_price.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'
   return {
     message: {
       attachment: {
         type: 'template',
         payload: {
           template_type: 'button',
-          text: `🛍️ ${product.name}\n💰 Giá: ${price}\n📦 Còn hàng: ${product.stock} sản phẩm\n\nNhấn để thêm vào giỏ hàng:`,
+          text: `🛍️ ${product.name}\n💰 Giá từ: ${price}\n\nNhấn để thêm vào giỏ hàng:`,
           buttons: [
             {
               type: 'postback',
@@ -120,10 +119,10 @@ export function buildProductReplyMessage(product: {
 }
 
 export function buildCartLinkMessage(
-  product: { id: number; name: string; price: number | null },
+  product: { id: number; name: string; min_price: number | null },
   psid: string
 ) {
-  const price = product.price ? product.price.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'
+  const price = product.min_price ? product.min_price.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tanvyphat.com'
   return {
     message: {
@@ -131,7 +130,7 @@ export function buildCartLinkMessage(
         type: 'template',
         payload: {
           template_type: 'button',
-          text: `✅ Đã thêm vào giỏ hàng!\n\n🛍️ ${product.name}\n💰 Giá: ${price}\n\nNhấn để xem giỏ hàng và đặt hàng:`,
+          text: `✅ Đã thêm vào giỏ hàng!\n\n🛍️ ${product.name}\n💰 Giá từ: ${price}\n\nNhấn để xem giỏ hàng và đặt hàng:`,
           buttons: [
             {
               type: 'web_url',
