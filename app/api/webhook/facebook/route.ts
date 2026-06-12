@@ -37,8 +37,7 @@ export async function POST(request: NextRequest) {
     return new Response('Bad Request', { status: 400 })
   }
 
-  // Process asynchronously but respond immediately (Facebook requires < 20s)
-  void processWebhookEvent(body)
+  await processWebhookEvent(body)
 
   return new Response('EVENT_RECEIVED', { status: 200 })
 }
