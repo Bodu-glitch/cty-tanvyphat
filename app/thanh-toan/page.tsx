@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useCart, useFbUserId, CartItem } from '../../src/hooks/useCart'
+import { useAuth } from '../../src/contexts/AuthContext'
 import { PROVINCES, DISTRICTS_BY_PROVINCE, type Province, type District } from '../../src/data/provinces'
 
 const SEPAY_BANK = process.env.NEXT_PUBLIC_SEPAY_BANK_CODE ?? ''
@@ -11,6 +12,7 @@ const SEPAY_ACCOUNT = process.env.NEXT_PUBLIC_SEPAY_ACCOUNT ?? ''
 function CheckoutContent() {
   const { items, totalPrice, clearCart } = useCart()
   const { getFbUserId } = useFbUserId()
+  const { user, profile } = useAuth()
 
   // Form fields
   const [name, setName] = useState('')
@@ -31,6 +33,9 @@ function CheckoutContent() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
+  // Profile auto-fill
+  const [profileFilled, setProfileFilled] = useState(false)
+
   // Bank transfer state
   const [qrToken, setQrToken] = useState('')
   const [qrAmount, setQrAmount] = useState(0)
@@ -40,6 +45,22 @@ function CheckoutContent() {
 
   const districts = province ? (DISTRICTS_BY_PROVINCE[province.code] ?? []) : []
   const totalWithShipping = totalPrice + (shippingFee ?? 0)
+
+  function fillFromProfile() {
+    if (!profile) return
+    if (profile.full_name) setName(profile.full_name)
+    if (profile.phone) setPhone(profile.phone)
+    if (profile.address) setAddress(profile.address)
+    if (profile.province) {
+      const p = PROVINCES.find(pr => pr.name === profile.province) ?? null
+      setProvince(p)
+      if (p && profile.district) {
+        const d = (DISTRICTS_BY_PROVINCE[p.code] ?? []).find(d => d.name === profile.district) ?? null
+        setDistrict(d)
+      }
+    }
+    setProfileFilled(true)
+  }
 
   // Tính phí vận chuyển khi chọn tỉnh + quận
   useEffect(() => {
@@ -289,6 +310,29 @@ function CheckoutContent() {
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           {/* LEFT: Form */}
           <form onSubmit={handleSubmit} className="flex-1 min-w-0 space-y-5">
+            {/* Profile auto-fill banner */}
+            {user && profile && (profile.phone || profile.address) && !profileFilled && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                <div className="text-sm text-blue-800">
+                  <span className="font-semibold">👤 Đã đăng nhập</span>
+                  <span className="text-blue-600"> — Dùng thông tin đã lưu?</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={fillFromProfile}
+                  className="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Tự điền
+                </button>
+              </div>
+            )}
+            {profileFilled && (
+              <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700 flex items-center gap-2">
+                <span>✓</span>
+                <span>Đã điền thông tin từ tài khoản. Bạn có thể chỉnh sửa bên dưới.</span>
+              </div>
+            )}
+
             {/* Thông tin giao hàng */}
             <div className="bg-white border border-gray-200 rounded-xl p-6">
               <h2 className="font-semibold text-gray-900 text-base mb-5">Thông tin giao hàng</h2>

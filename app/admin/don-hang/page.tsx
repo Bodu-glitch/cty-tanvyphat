@@ -61,6 +61,9 @@ export default async function AdminOrdersPage({
             <Link href="/admin/tin-tuc" className="text-sm text-gray-500 hover:text-gray-700">
               Tin tức
             </Link>
+            <Link href="/admin/quan-tri-vien" className="text-sm text-gray-500 hover:text-gray-700">
+              Quản trị viên
+            </Link>
           </div>
           <LogoutButton />
         </div>

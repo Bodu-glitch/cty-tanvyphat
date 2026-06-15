@@ -25,18 +25,20 @@ export async function proxy(request: NextRequest) {
   const isAdminPath = pathname.startsWith('/admin')
   const isLoginPath = pathname === '/admin/dang-nhap'
 
-  // Chưa đăng nhập → vào trang admin (không phải login) → redirect về login
-  if (isAdminPath && !isLoginPath && !user) {
+  const isAdmin = user?.app_metadata?.role === 'admin'
+
+  // Chưa đăng nhập hoặc không phải admin → vào trang admin (không phải login) → redirect về login
+  if (isAdminPath && !isLoginPath && !isAdmin) {
     return NextResponse.redirect(new URL('/admin/dang-nhap', request.url))
   }
 
-  // Đã đăng nhập → vào trang login → redirect về don-hang
-  if (isLoginPath && user) {
+  // Đã là admin → vào trang login → redirect về don-hang
+  if (isLoginPath && isAdmin) {
     return NextResponse.redirect(new URL('/admin/don-hang', request.url))
   }
 
-  // Đã đăng nhập → vào /admin root → redirect về don-hang
-  if (pathname === '/admin' && user) {
+  // Đã là admin → vào /admin root → redirect về don-hang
+  if (pathname === '/admin' && isAdmin) {
     return NextResponse.redirect(new URL('/admin/don-hang', request.url))
   }
 

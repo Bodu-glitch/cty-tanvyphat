@@ -1,18 +1,117 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { store } from '../data/store'
 import CartBadge from './CartBadge'
+import { useAuth } from '../contexts/AuthContext'
 
 const navLinks = [
   { href: '/', label: 'Trang chủ' },
   { href: '/san-pham', label: 'Sản phẩm' },
   { href: '/gioi-thieu', label: 'Giới thiệu' },
   { href: '/tin-tuc', label: 'Tin tức' },
+  { href: '/tra-cuu-don-hang', label: 'Tra cứu đơn' },
   { href: '/lien-he', label: 'Liên hệ' },
 ]
+
+function UserMenu() {
+  const { user, profile, authLoading, signOut } = useAuth()
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  if (authLoading) return <div className="w-8 h-8 rounded-full bg-blue-700 animate-pulse" />
+
+  if (!user) {
+    return (
+      <Link
+        href="/dang-nhap"
+        className="flex items-center gap-1.5 text-blue-100 hover:text-white text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-[#1e4db7] transition-colors"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+        Đăng nhập
+      </Link>
+    )
+  }
+
+  const avatarUrl = user.user_metadata?.avatar_url as string | undefined
+  const displayName = profile?.full_name ?? user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? ''
+  const initials = displayName.charAt(0).toUpperCase()
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 rounded-full hover:opacity-90 transition-opacity"
+        aria-label="Tài khoản"
+      >
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full object-cover border-2 border-white/30" />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-amber-400 flex items-center justify-center text-sm font-bold text-[#1a3a6b] border-2 border-white/30">
+            {initials}
+          </div>
+        )}
+        <span className="hidden md:block text-sm text-white font-medium max-w-[100px] truncate">{displayName.split(' ').pop()}</span>
+        <svg className="h-3 w-3 text-blue-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-1 z-50">
+          <div className="px-4 py-3 border-b border-gray-100">
+            <p className="font-semibold text-gray-900 text-sm truncate">{displayName}</p>
+            <p className="text-xs text-gray-400 truncate">{user.email}</p>
+          </div>
+          <Link
+            href="/tai-khoan"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            Tài khoản
+          </Link>
+          <Link
+            href="/tra-cuu-don-hang"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Đơn hàng của tôi
+          </Link>
+          <div className="border-t border-gray-100 mt-1 pt-1">
+            <button
+              onClick={async () => { setOpen(false); await signOut(); router.push('/') }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Đăng xuất
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -55,6 +154,7 @@ export default function Navbar() {
 
           {/* Hotline Button */}
           <div className="hidden md:flex items-center gap-3">
+            <UserMenu />
             <CartBadge />
             <a
               href={`tel:${store.phone}`}
@@ -80,6 +180,7 @@ export default function Navbar() {
 
           {/* Mobile: Phone + Hamburger */}
           <div className="flex md:hidden items-center gap-2">
+            <UserMenu />
             <CartBadge />
             <a
               href={`tel:${store.phone}`}

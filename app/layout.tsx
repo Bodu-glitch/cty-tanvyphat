@@ -6,6 +6,7 @@ import Navbar from '../src/components/Navbar'
 import Footer from '../src/components/Footer'
 import ContactCTA from '../src/components/ContactCTA'
 import { CartProvider } from '../src/contexts/CartContext'
+import { AuthProvider } from '../src/contexts/AuthContext'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -58,12 +59,14 @@ export default function RootLayout({
     <html lang="vi" className={`${geistSans.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col antialiased bg-[#f8fafc] text-[#1e293b]" suppressHydrationWarning>
         <NextTopLoader color="#1a56db" showSpinner={false} />
-        <CartProvider>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <ContactCTA />
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+            <ContactCTA />
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   )
