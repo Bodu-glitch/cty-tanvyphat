@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createSupabaseBrowserClient } from '@/src/lib/supabase/browser'
 
 export default function AdminLoginPage() {
@@ -9,7 +8,6 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -18,11 +16,14 @@ export default function AdminLoginPage() {
 
     try {
       const supabase = createSupabaseBrowserClient()
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setError('Email hoặc mật khẩu không đúng')
+      } else if (data.user?.app_metadata?.role !== 'admin') {
+        await supabase.auth.signOut()
+        setError('Tài khoản không có quyền truy cập trang quản lý.')
       } else {
-        router.push('/admin/don-hang')
+        window.location.href = '/admin/don-hang'
       }
     } catch {
       setError('Có lỗi xảy ra. Vui lòng thử lại.')
