@@ -20,8 +20,7 @@ export default function AdminLoginPage() {
       if (error) {
         setError('Email hoặc mật khẩu không đúng')
       } else if (data.user?.app_metadata?.role !== 'admin') {
-        await supabase.auth.signOut()
-        setError('Tài khoản không có quyền truy cập trang quản lý.')
+        window.location.href = '/san-pham'
       } else {
         window.location.href = '/admin/don-hang'
       }
