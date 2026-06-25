@@ -3,8 +3,8 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-    title: 'Chính Sách Bảo Mật | Tân Vỹ Phát',
-    description: 'Chính sách bảo mật thông tin và dữ liệu người dùng tại hệ thống Tân Vỹ Phát.',
+    title: 'Chính Sách Bảo Mật',
+    description: 'Chính sách bảo mật thông tin và dữ liệu người dùng tại hệ thống Tân Vy Phát.',
 };
 
 export default function PrivacyPolicyPage() {
@@ -40,7 +40,7 @@ export default function PrivacyPolicyPage() {
                         </ul>
 
                         <h2 className="text-xl font-bold text-gray-900 mt-8 mb-3">2. Mục đích sử dụng dữ liệu</h2>
-                        <p>Hệ thống Tân Vỹ Phát xử lý thông tin của bạn để tự động hóa các quy trình sau:</p>
+                        <p>Hệ thống Tân Vy Phát xử lý thông tin của bạn để tự động hóa các quy trình sau:</p>
                         <ul className="list-disc pl-6 space-y-2">
                             <li><strong>Vận hành Đơn hàng:</strong> Tạo mã đơn hàng duy nhất, tính toán tự động phí vận chuyển dựa trên khu vực địa lý, và theo dõi sát sao trạng thái đơn hàng (Mới, Đang xử lý, Đã giao, Hủy).</li>
                             <li><strong>Xác thực Thanh toán Tự động:</strong> Thông qua webhook bảo mật với Sepay, chúng tôi đối soát thông tin chuyển khoản của bạn với mã đơn hàng để tự động xác nhận thanh toán thành công mà không cần can thiệp thủ công.</li>
