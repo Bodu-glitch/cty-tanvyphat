@@ -70,12 +70,26 @@ function normalizeProduct(row: ProductRow & { product_units?: ProductUnitRow[] }
   return { ...row, product_units: units }
 }
 
-function getClient() {
+export function getClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !key) throw new Error('Missing Supabase env vars')
   return createClient(url, key)
 }
+// ==================== ADMIN CLIENT (Service Role) ====================
+export function getAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!url || !key) {
+    throw new Error('Missing Supabase admin env vars (SUPABASE_SERVICE_ROLE_KEY)')
+  }
+
+  return createClient(url, key, {
+    auth: { persistSession: false },
+  })
+}
+// ===================================================================
 
 export async function createSSRClient() {
   const cookieStore = await cookies()
@@ -195,13 +209,12 @@ export async function getProductsFiltered(filter: ProductFilterParams = {}): Pro
   const { data, error, count } = await query
   if (error) throw new Error(`getProductsFiltered: ${error.message}`)
 
-  // Giấy in: sort theo categories.sort_order (brand priority) → name
-  // referencedTable order của Supabase không hoạt động với FK text→slug
   let result = data ?? []
   if (branchSlug === 'giay-in' || branchSlug === 'van-phong-pham' || branchSlug === 'hang-thai-lan') {
     result = [...result].sort((a, b) => {
-      const aOrder = (a as any).categories?.sort_order ?? 9999
-      const bOrder = (b as any).categories?.sort_order ?? 9999
+      const aOrder = (a as { categories?: { sort_order?: number } }).categories?.sort_order ?? 9999
+      const bOrder = (b as { categories?: { sort_order?: number } }).categories?.sort_order ?? 9999
+
       if (aOrder !== bOrder) return aOrder - bOrder
       return a.name.localeCompare(b.name, 'vi')
     })
