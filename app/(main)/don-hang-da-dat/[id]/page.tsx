@@ -70,11 +70,10 @@ export default async function DonHangChiTietPage({
         icon: Package
     };
 
-    // Hàm format mã đơn hàng - 8 ký tự đầu + chữ hoa
-    const formatOrderCode = (id: number): string => {
-        const idStr = id.toString().padStart(10, '0');
-        return `#${idStr.slice(0, 8).toUpperCase()}`;
-    };
+    const formatOrderCode = (id: string): string => {
+        const clean = id.replace(/-/g, '')
+        return `#${clean.slice(0, 8).toUpperCase()}`
+    }
 
     const displayCode = formatOrderCode(order.id);
 

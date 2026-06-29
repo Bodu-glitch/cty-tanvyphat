@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 type Order = {
-    id: number
+    id: string
     created_at: string
     total_price: number
     status: string
@@ -46,9 +46,9 @@ export default async function DonHangDaDatPage() {
     }
 
     // Hàm format mã đơn hàng - hiển thị 8 ký tự đầu và chữ hoa
-    const formatOrderCode = (id: number): string => {
-        const idStr = id.toString().padStart(10, '0') // Pad đủ để tránh lỗi slice
-        return `#${idStr.slice(0, 8).toUpperCase()}`
+    const formatOrderCode = (id: string): string => {
+        const clean = id.replace(/-/g, '')
+        return `#${clean.slice(0, 8).toUpperCase()}`
     }
 
     return (
